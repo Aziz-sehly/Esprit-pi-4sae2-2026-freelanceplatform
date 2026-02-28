@@ -1,0 +1,60 @@
+<div class="app-container">
+  <header class="main-header" *ngIf="authService.currentUser$ | async as user">
+    <div class="header-content">
+      <div class="logo-section">
+        <h1 class="logo" routerLink="/">Talently</h1>
+      </div>
+
+      <nav class="main-nav">
+        <a routerLink="/jobs" routerLinkActive="active">Find Work</a>
+        <a routerLink="/my-jobs" routerLinkActive="active">My Jobs</a>
+        <a routerLink="/proposals" routerLinkActive="active">Proposals</a>
+        <a routerLink="/messages" routerLinkActive="active">Messages</a>
+      </nav>
+
+      <div class="user-section">
+        <div class="user-info">
+          <img [src]="user.profileImage || 'https://i.pravatar.cc/150'"
+               [alt]="user.firstName"
+               class="user-avatar">
+          <span class="user-name">{{ user.firstName }}</span>
+        </div>
+        <button class="logout-btn" (click)="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="main-footer" *ngIf="authService.currentUser$ | async">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Talently</h3>
+        <p>Connect with top talent worldwide</p>
+      </div>
+      <div class="footer-section">
+        <h4>For Clients</h4>
+        <a href="#">How to Hire</a>
+        <a href="#">Talent Marketplace</a>
+        <a href="#">Project Catalog</a>
+      </div>
+      <div class="footer-section">
+        <h4>For Talent</h4>
+        <a href="#">How to Find Work</a>
+        <a href="#">Direct Contracts</a>
+        <a href="#">Find Freelance Jobs</a>
+      </div>
+      <div class="footer-section">
+        <h4>Resources</h4>
+        <a href="#">Help & Support</a>
+        <a href="#">Success Stories</a>
+        <a href="#">Reviews</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Talently. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

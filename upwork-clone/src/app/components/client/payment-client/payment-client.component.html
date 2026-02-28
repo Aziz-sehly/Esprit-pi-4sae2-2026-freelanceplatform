@@ -1,0 +1,42 @@
+<div class="backdrop" *ngIf="open" (click)="close()"></div>
+
+<div class="modal" *ngIf="open">
+    <div class="modal-header">
+        <h3>Pay Milestone #{{ milestoneId }}</h3>
+        <button class="x" (click)="close()">✕</button>
+    </div>
+
+    <div class="modal-body">
+        <div class="summary">
+            <div><b>Contract:</b> {{ contractId }}</div>
+            <div><b>Amount:</b> {{ amount | number:'1.2-2' }}</div>
+            <div class="note">Platform fee is calculated server-side (5%).</div>
+        </div>
+
+        <div *ngIf="errorMsg" class="alert error">{{ errorMsg }}</div>
+
+        <form [formGroup]="form">
+            <div class="row">
+                <label>Payer ID (Client) *</label>
+                <input type="number" formControlName="payerId" min="1" />
+            </div>
+
+            <div class="row">
+                <label>Payee ID (Freelancer) *</label>
+                <input type="number" formControlName="payeeId" min="1" />
+            </div>
+
+            <div class="row">
+                <label>Method *</label>
+                <select formControlName="method">
+                    <option *ngFor="let m of methods" [value]="m">{{ m }}</option>
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <div class="modal-actions">
+        <button class="secondary" (click)="close()" [disabled]="loading">Cancel</button>
+        <button (click)="confirmPay()" [disabled]="loading">Confirm Payment</button>
+    </div>
+</div>

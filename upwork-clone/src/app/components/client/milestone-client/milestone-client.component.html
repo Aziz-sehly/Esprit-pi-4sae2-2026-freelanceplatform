@@ -1,0 +1,183 @@
+<div class="main-class">
+    <div class="header">
+        <h2>Client • Milestones</h2>
+
+        <div class="contract-bar">
+            <div class="field">
+                <input
+                        type="number"
+                        placeholder="Contract ID"
+                        [(ngModel)]="contractId"
+                        min="1"
+                />
+                <div class="err" *ngIf="contractId !== null && contractId < 1">
+                    Contract ID must be greater than 0.
+                </div>
+            </div>
+
+            <button (click)="load()" [disabled]="loading || !contractId || contractId < 1">
+                Load
+            </button>
+            <button class="secondary" (click)="startCreate()" [disabled]="loading">
+                + New Milestone
+            </button>
+        </div>
+    </div>
+
+    <div *ngIf="successMsg" class="alert success">{{ successMsg }}</div>
+    <div *ngIf="errorMsg" class="alert error">{{ errorMsg }}</div>
+
+    <app-payment-history [contractId]="contractId"></app-payment-history>
+
+    <div class="grid">
+        <!-- Form card -->
+        <div class="card">
+            <h3>{{ editingId ? 'Edit Milestone' : 'Create Milestone' }}</h3>
+
+            <form (ngSubmit)="save()" [formGroup]="form" novalidate>
+                <!-- Contract ID -->
+                <div class="row">
+                    <label>Contract ID *</label>
+                    <input type="number" formControlName="contractId" min="1" />
+                    <div class="err" *ngIf="isInvalid('contractId')">
+                        <span *ngIf="form.controls.contractId.errors?.['required']">Contract ID is required.</span>
+                        <span *ngIf="form.controls.contractId.errors?.['min']">Contract ID must be greater than 0.</span>
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div class="row">
+                    <label>Title *</label>
+                    <input type="text" formControlName="title" maxlength="120" />
+                    <div class="err" *ngIf="isInvalid('title')">
+                        <span *ngIf="form.controls.title.errors?.['required']">Title is required.</span>
+                        <span *ngIf="form.controls.title.errors?.['maxlength']">Max 120 characters.</span>
+                    </div>
+                </div>
+
+                <!-- Deliverable -->
+                <div class="row">
+                    <label>Deliverable *</label>
+                    <textarea rows="5" formControlName="deliverable" maxlength="2000"></textarea>
+                    <div class="err" *ngIf="isInvalid('deliverable')">
+                        <span *ngIf="form.controls.deliverable.errors?.['required']">Deliverable is required.</span>
+                        <span *ngIf="form.controls.deliverable.errors?.['maxlength']">Max 2000 characters.</span>
+                    </div>
+                </div>
+
+                <!-- Amount + Due Date -->
+                <div class="row two">
+                    <div>
+                        <label>Amount *</label>
+                        <input type="number" formControlName="amount" min="1" step="0.01" />
+                        <div class="err" *ngIf="isInvalid('amount')">
+                            <span *ngIf="form.controls.amount.errors?.['required']">Amount is required.</span>
+                            <span *ngIf="form.controls.amount.errors?.['min']">Amount must be at least 1.</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label>Due date</label>
+                        <input
+                                type="date"
+                                formControlName="dueDate"
+                                [min]="minDate"
+                        />
+                        <div class="err" *ngIf="form.controls.dueDate.errors?.['pastDate']">
+                            Due date cannot be in the past.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit" [disabled]="loading || form.invalid">
+                        {{ editingId ? 'Update' : 'Create' }}
+                    </button>
+                    <button type="button" class="secondary" (click)="cancelEdit()" [disabled]="loading">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- List card -->
+        <div class="card">
+            <div class="list-header">
+                <h3>Milestones</h3>
+
+                <select [(ngModel)]="statusFilter">
+                    <option value="ALL">All</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="SUBMITTED">SUBMITTED</option>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="PAID">PAID</option>
+                </select>
+            </div>
+
+            <div *ngIf="loading" class="muted">Loading...</div>
+
+            <table class="table" *ngIf="!loading">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Amount</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th style="width: 290px;">Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr *ngFor="let m of filteredMilestones">
+                    <td>{{ m.id }}</td>
+                    <td class="title">
+                        <div class="t1">{{ m.title }}</div>
+                        <div class="t2">{{ m.deliverable }}</div>
+                    </td>
+                    <td>{{ m.amount | number:'1.2-2' }}</td>
+                    <td>{{ m.dueDate || '-' }}</td>
+                    <td><span [class]="badgeClass(m.status)">{{ m.status }}</span></td>
+
+                    <td class="btns">
+                        <button class="secondary" (click)="startEdit(m)" [disabled]="loading">
+                            Edit
+                        </button>
+
+                        <button class="danger" (click)="remove(m)" [disabled]="loading || m.status === 'PAID'">
+                            Delete
+                        </button>
+
+                        <button
+                                (click)="approve(m)"
+                                [disabled]="loading || m.status === 'APPROVED' || m.status === 'PAID'"
+                        >
+                            Approve
+                        </button>
+
+                        <button (click)="openPay(m)" [disabled]="loading || m.status !== 'APPROVED'">
+                            Pay
+                        </button>
+                    </td>
+                </tr>
+
+                <tr *ngIf="filteredMilestones.length === 0">
+                    <td colspan="6" class="muted center">No milestones.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <app-payment-client
+            [open]="payModalOpen"
+            [contractId]="payContractId"
+            [milestoneId]="payMilestoneId"
+            [amount]="payAmount"
+            [payerId]="payPayerId"
+            [payeeId]="payPayeeId"
+            (closed)="payModalOpen = false"
+            (paid)="onPaid($event)">
+    </app-payment-client>
+
+</div>s
