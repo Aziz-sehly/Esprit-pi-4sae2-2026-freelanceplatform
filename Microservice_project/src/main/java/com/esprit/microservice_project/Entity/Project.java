@@ -24,6 +24,9 @@ public class Project {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "client_id", nullable = false)
     private User client;
+    // ADD ce champ après private User client;
+    @Column(name = "client_email")
+    private String clientEmail;
 
     private String title;
     private String description;

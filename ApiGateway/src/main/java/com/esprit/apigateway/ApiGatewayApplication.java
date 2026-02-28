@@ -29,7 +29,7 @@ public class ApiGatewayApplication {
                         .path("/proposal/**")
                         .filters(f -> f.rewritePath(
                                 "/proposal/(?<segment>.*)",
-                                "/freelance/proposal/${segment}"
+                                "/freelance1/proposal/${segment}"
                         ))
                         .uri("http://localhost:8092"))
                 .build();
