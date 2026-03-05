@@ -1,0 +1,126 @@
+<div class="wrap">
+  <div class="head">
+    <h1>Disputes</h1>
+    <p>Manage your contract-related disputes</p>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Contract ID</label>
+      <input type="number" [(ngModel)]="filterContractId" placeholder="Ex: 1" (keyup.enter)="applyFilter()" />
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select [(ngModel)]="filterStatus" (change)="applyFilter()">
+        <option value="">All</option>
+        <option value="OPEN">Open</option>
+        <option value="IN_REVIEW">In review</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="REJECTED">Rejected</option>
+      </select>
+    </div>
+    <button class="btn-filter" (click)="applyFilter()">Filter</button>
+    <button class="btn-create" (click)="showCreateForm = !showCreateForm">
+      {{ showCreateForm ? 'Cancel' : '+ New dispute' }}
+    </button>
+  </div>
+
+  <!-- Create form -->
+  <div class="create-form" *ngIf="showCreateForm">
+    <h3>Create a dispute</h3>
+    <div class="form-row">
+      <div class="field">
+        <label>Contract ID</label>
+        <input type="number" [(ngModel)]="createForm.contractId" placeholder="1" />
+      </div>
+      <div class="field">
+        <label>User (User ID)</label>
+        <input type="number" [(ngModel)]="createForm.raisedByUserId" placeholder="1" />
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="createForm.disputeType">
+          <option value="QUALITY_ISSUE">Quality issue</option>
+          <option value="PAYMENT_ISSUE">Payment issue</option>
+          <option value="DELIVERY_ISSUE">Delivery issue</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Reason</label>
+      <textarea [(ngModel)]="createForm.reason" placeholder="Describe the issue..." rows="3"></textarea>
+    </div>
+    <button class="btn-submit" (click)="createDispute()" [disabled]="creating">
+      {{ creating ? 'Creating...' : 'Create dispute' }}
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    Loading disputes...
+  </div>
+
+  <!-- List -->
+  <div class="disputes-table" *ngIf="!loading">
+    <div class="row header">
+      <div>ID</div>
+      <div>Contract</div>
+      <div>Type</div>
+      <div>Status</div>
+      <div>Created</div>
+      <div>Action</div>
+    </div>
+    <div class="row" *ngFor="let d of disputes">
+      <div>#{{ d.id }}</div>
+      <div>{{ d.contractId }}</div>
+      <div>{{ getDisputeTypeLabel(d.disputeType) }}</div>
+      <div>
+        <span class="status-badge" [class]="getStatusClass(d.status)">
+          {{ getStatusLabel(d.status) }}
+        </span>
+      </div>
+      <div>{{ formatDate(d.createdAt) }}</div>
+      <div class="actions-cell">
+        <a [routerLink]="['/front/disputes', d.id]" class="btn-view">Details</a>
+        <button *ngIf="canEdit(d)" type="button" class="btn-edit" (click)="startEdit(d)" title="Edit">✎</button>
+        <button *ngIf="canDelete(d)" type="button" class="btn-delete" (click)="deleteDispute(d)" title="Delete">×</button>
+      </div>
+    </div>
+    <div class="row empty" *ngIf="disputes.length === 0">
+      <div>No disputes found</div>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div *ngIf="editingDispute" class="modal-overlay" (click)="cancelEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Edit dispute #{{ editingDispute.id }}</h3>
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="editForm.disputeType">
+          <option value="QUALITY_ISSUE">Quality issue</option>
+          <option value="PAYMENT_ISSUE">Payment issue</option>
+          <option value="DELIVERY_ISSUE">Delivery issue</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <textarea [(ngModel)]="editForm.reason" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="updating || !(editForm.reason || '').trim()">
+          {{ updating ? '...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

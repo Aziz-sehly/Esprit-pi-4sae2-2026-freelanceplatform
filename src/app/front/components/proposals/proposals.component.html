@@ -1,0 +1,43 @@
+<div class="wrap">
+  <div class="header">
+    <h1>Received proposals</h1>
+    <p>View and manage freelancer proposals on your projects.</p>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading...</div>
+
+  <div class="cards" *ngIf="!loading">
+    <div class="card" *ngFor="let p of proposals">
+      <div class="row">
+        <div>
+          <div class="muted">Project</div>
+          <a [routerLink]="['/front/projects', p.projectId]" class="link">{{ getProjectTitle(p.projectId) }}</a>
+        </div>
+        <span class="pill" [class.pending]="p.status === 'PENDING'" [class.accepted]="p.status === 'ACCEPTED'" [class.rejected]="p.status === 'REJECTED'">
+          {{ p.status }}
+        </span>
+      </div>
+
+      <div class="row2">
+        <div class="price">${{ p.proposedBudget }}</div>
+        <div class="muted">{{ p.estimatedDuration }}</div>
+      </div>
+
+      <p class="cover">{{ p.coverLetter }}</p>
+      <div class="muted small">Sent: {{ p.submittedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
+
+      <div class="actions" *ngIf="canAcceptOrReject(p)">
+        <button type="button" class="btn-action btn-accept" (click)="accept(p.id)">Accept</button>
+        <button type="button" class="btn-action btn-reject" (click)="reject(p.id)">Reject</button>
+        <button type="button" class="btn-action btn-cancel" (click)="cancel(p.id)">Cancel</button>
+      </div>
+      <div class="actions" *ngIf="!canAcceptOrReject(p)">
+        <a [routerLink]="['/front/projects', p.projectId]" class="link">See project</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty" *ngIf="!loading && proposals.length === 0">
+    No proposals received.
+  </div>
+</div>

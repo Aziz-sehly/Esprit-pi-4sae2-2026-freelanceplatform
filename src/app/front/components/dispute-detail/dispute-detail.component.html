@@ -1,0 +1,128 @@
+<div class="wrap">
+  <a [routerLink]="[backUrl()]" class="back-link">← Back</a>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    Loading...
+  </div>
+
+  <div *ngIf="!loading && details" class="detail">
+    <div class="head">
+      <h1>Dispute #{{ details.dispute.id }}</h1>
+      <span class="status-badge" [class]="'status-' + details.dispute.status.toLowerCase()">
+        {{ getStatusLabel(details.dispute.status) }}
+      </span>
+      <div class="head-actions" *ngIf="canEdit() || canDelete()">
+        <button *ngIf="canEdit()" type="button" class="btn-edit" (click)="startEdit()" title="Edit">✎ Edit</button>
+        <button *ngIf="canDelete()" type="button" class="btn-delete" (click)="deleteDispute()" title="Delete">× Delete</button>
+      </div>
+    </div>
+
+    <!-- Edit form -->
+    <div class="edit-section" *ngIf="showEditForm">
+      <h3>Edit dispute</h3>
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="editForm.disputeType">
+          <option value="QUALITY_ISSUE">Quality issue</option>
+          <option value="PAYMENT_ISSUE">Payment issue</option>
+          <option value="DELIVERY_ISSUE">Delivery issue</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <textarea [(ngModel)]="editForm.reason" rows="4"></textarea>
+      </div>
+      <div class="edit-actions">
+        <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="updating || !(editForm.reason || '').trim()">
+          {{ updating ? '...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card" *ngIf="!showEditForm">
+      <h3>Information</h3>
+      <div class="info-grid">
+        <div><strong>Contract</strong> #{{ details.dispute.contractId }}</div>
+        <div><strong>Created by</strong> User {{ details.dispute.raisedByUserId }}</div>
+        <div><strong>Type</strong> {{ getDisputeTypeLabel(details.dispute.disputeType) }}</div>
+        <div><strong>Created</strong> {{ formatDate(details.dispute.createdAt) }}</div>
+      </div>
+      <div class="reason">
+        <strong>Reason</strong>
+        <p>{{ details.dispute.reason }}</p>
+      </div>
+      <div *ngIf="details.dispute.resolutionNote" class="resolution">
+        <strong>Resolution note</strong>
+        <p>{{ details.dispute.resolutionNote }}</p>
+      </div>
+      <div *ngIf="details.dispute.resolutionType" class="resolution-type">
+        <strong>Resolution type</strong>
+        <p>{{ getResolutionLabel(details.dispute.resolutionType) }}</p>
+      </div>
+    </div>
+
+    <!-- Resolution (admin) -->
+    <div class="resolve-section" *ngIf="isAdmin && details.dispute.status !== 'RESOLVED' && details.dispute.status !== 'REJECTED'">
+      <button class="btn-toggle" (click)="showResolveForm = !showResolveForm">
+        {{ showResolveForm ? 'Hide' : 'Resolve this dispute' }}
+      </button>
+      <div class="resolve-form" *ngIf="showResolveForm">
+        <div class="field">
+          <label>Admin User ID</label>
+          <input type="number" [(ngModel)]="resolveForm.resolvedByUserId" />
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select [(ngModel)]="resolveForm.status">
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="IN_REVIEW">In review</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Resolution type</label>
+          <select [(ngModel)]="resolveForm.resolutionType">
+            <option value="NO_ACTION">No action</option>
+            <option value="REFUND_TO_CLIENT">Client refund</option>
+            <option value="PAY_TO_FREELANCER">Freelancer payment</option>
+            <option value="SPLIT_PAYMENT">Split payment</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Refund amount</label>
+          <input type="number" step="0.01" [(ngModel)]="resolveForm.refundAmount" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>Note</label>
+          <textarea [(ngModel)]="resolveForm.resolutionNote" rows="3"></textarea>
+        </div>
+        <button class="btn-resolve" (click)="resolve()" [disabled]="resolving">
+          {{ resolving ? 'Processing...' : 'Resolve' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Related messages -->
+    <div class="messages-section" *ngIf="details.relatedMessages?.length">
+      <h3>Related messages ({{ details.relatedMessages.length }})</h3>
+      <div class="message-list">
+        <div *ngFor="let m of details.relatedMessages" class="message-card">
+          <div class="meta">
+            User {{ m.senderUserId }} → User {{ m.receiverUserId }} · {{ formatDate(m.sentAt) }}
+          </div>
+          <div class="content">{{ m.content }}</div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="!details.relatedMessages?.length" class="no-messages">
+      No messages associated with this contract.
+    </div>
+  </div>
+</div>

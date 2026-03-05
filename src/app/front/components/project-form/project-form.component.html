@@ -1,0 +1,169 @@
+<div class="wrap" *ngIf="!loading; else loadingTpl">
+  <div class="header">
+    <h1>{{ mode === 'create' ? 'Create project' : 'Edit project' }}</h1>
+    <p>All fields are validated in real time</p>
+  </div>
+
+  <form class="card" (ngSubmit)="save()">
+    <!-- Display global errors -->
+    <div *ngIf="!isFormValid() && hasAnyTouched()" class="error-box">
+      <div *ngFor="let error of errors">{{ error }}</div>
+    </div>
+
+    <!-- Title -->
+    <div class="field" [class.field-error]="titleTouched && titleError">
+      <span>Title <span class="required">*</span></span>
+      <input 
+        [(ngModel)]="title" 
+        name="title" 
+        (blur)="markTitleTouched()"
+        (input)="validateTitle()"
+        [class.invalid]="titleTouched && titleError"
+        placeholder="Enter the project title" />
+      <small *ngIf="titleTouched && titleError" class="error-message">
+        {{ titleError }}
+      </small>
+    </div>
+
+    <!-- Description -->
+    <div class="field" [class.field-error]="descriptionTouched && descriptionError">
+      <span>Description <span class="required">*</span></span>
+      <textarea 
+        rows="6" 
+        [(ngModel)]="description" 
+        name="description"
+        (blur)="markDescriptionTouched()"
+        (input)="validateDescription()"
+        [class.invalid]="descriptionTouched && descriptionError"
+        placeholder="Describe the project in detail"></textarea>
+      <small *ngIf="descriptionTouched && descriptionError" class="error-message">
+        {{ descriptionError }}
+      </small>
+    </div>
+
+    <!-- Category and Duration -->
+    <div class="grid2">
+      <div class="field" [class.field-error]="categoryTouched && categoryError">
+        <span>Category <span class="required">*</span></span>
+        <input 
+          [(ngModel)]="category" 
+          name="category"
+          (blur)="markCategoryTouched()"
+          (input)="validateCategory()"
+          [class.invalid]="categoryTouched && categoryError"
+          placeholder="e.g. Web, Mobile, AI" />
+        <small *ngIf="categoryTouched && categoryError" class="error-message">
+          {{ categoryError }}
+        </small>
+      </div>
+
+      <div class="field" [class.field-error]="durationTouched && durationError">
+        <span>Duration <span class="required">*</span></span>
+        <input 
+          [(ngModel)]="duration" 
+          name="duration"
+          (blur)="markDurationTouched()"
+          (input)="validateDuration()"
+          [class.invalid]="durationTouched && durationError"
+          placeholder="e.g. 3 months, 6 months" />
+        <small *ngIf="durationTouched && durationError" class="error-message">
+          {{ durationError }}
+        </small>
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="field" [class.field-error]="skillsTouched && skillsError">
+      <span>Skills <span class="required">*</span></span>
+      <input 
+        [(ngModel)]="skills" 
+        name="skills"
+        (blur)="markSkillsTouched()"
+        (input)="validateSkills()"
+        [class.invalid]="skillsTouched && skillsError"
+        placeholder="React, Node.js, MongoDB (comma-separated)" />
+      <small *ngIf="skillsTouched && skillsError" class="error-message">
+        {{ skillsError }}
+      </small>
+    </div>
+
+    <!-- Budget min and max -->
+    <div class="grid2">
+      <div class="field" [class.field-error]="budgetMinTouched && budgetMinError">
+        <span>Min budget <span class="required">*</span></span>
+        <input 
+          type="number" 
+          [(ngModel)]="budget_min" 
+          name="budget_min"
+          (blur)="markBudgetMinTouched()"
+          (input)="validateBudgetMin()"
+          [class.invalid]="budgetMinTouched && budgetMinError"
+          placeholder="500" />
+        <small *ngIf="budgetMinTouched && budgetMinError" class="error-message">
+          {{ budgetMinError }}
+        </small>
+      </div>
+
+      <div class="field" [class.field-error]="budgetMaxTouched && budgetMaxError">
+        <span>Max budget <span class="required">*</span></span>
+        <input 
+          type="number" 
+          [(ngModel)]="budget_max" 
+          name="budget_max"
+          (blur)="markBudgetMaxTouched()"
+          (input)="validateBudgetMax()"
+          [class.invalid]="budgetMaxTouched && budgetMaxError"
+          placeholder="1000" />
+        <small *ngIf="budgetMaxTouched && budgetMaxError" class="error-message">
+          {{ budgetMaxError }}
+        </small>
+      </div>
+    </div>
+
+    <!-- Expérience, Statut, Deadline -->
+    <div class="grid3">
+      <div class="field">
+        <span>Experience</span>
+        <select [(ngModel)]="experienceLevel" name="experienceLevel">
+          <option *ngFor="let e of experienceOptions" [ngValue]="e.value">{{ e.label }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <span>Status</span>
+        <select [(ngModel)]="status" name="status">
+          <option *ngFor="let s of statusOptions" [ngValue]="s.value">{{ s.label }}</option>
+        </select>
+      </div>
+
+      <div class="field" [class.field-error]="deadlineTouched && deadlineError">
+        <span>Deadline <span class="required">*</span></span>
+        <input 
+          type="date" 
+          [(ngModel)]="deadline" 
+          name="deadline"
+          (blur)="markDeadlineTouched()"
+          (change)="validateDeadline()"
+          [class.invalid]="deadlineTouched && deadlineError" />
+        <small *ngIf="deadlineTouched && deadlineError" class="error-message">
+          {{ deadlineError }}
+        </small>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button 
+        type="submit" 
+        class="primary" 
+        [disabled]="saving || !isFormValid()">
+        {{ saving ? 'Saving...' : 'Save' }}
+      </button>
+      <button type="button" class="secondary" (click)="cancel()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading">Loading...</div>
+</ng-template>

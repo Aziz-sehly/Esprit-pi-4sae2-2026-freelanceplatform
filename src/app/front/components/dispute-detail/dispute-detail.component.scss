@@ -1,0 +1,201 @@
+.wrap {
+  font-family: 'DM Sans', sans-serif;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+  &:hover { text-decoration: underline; }
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  &-success { background: #10b98120; border: 1px solid #10b981; color: #065f46; }
+  &-error { background: #ef444420; border: 1px solid #ef4444; color: #991b1b; }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #6b7280;
+  padding: 3rem;
+  justify-content: center;
+}
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  h1 { margin: 0; font-size: 1.75rem; color: #1f2937; }
+}
+.head-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.btn-edit, .btn-delete {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.btn-edit {
+  background: #3b82f620;
+  color: #2563eb;
+  &:hover { background: #3b82f640; }
+}
+.btn-delete {
+  background: #ef444420;
+  color: #dc2626;
+  &:hover { background: #ef444440; }
+}
+
+.edit-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+}
+.edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.btn-cancel, .btn-save {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+.btn-cancel {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+.btn-save {
+  background: #3b82f6;
+  border: none;
+  color: white;
+  &:hover:not(:disabled) { background: #2563eb; }
+}
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  &.status-open { background: #f59e0b20; color: #92400e; }
+  &.status-in_review { background: #3b82f620; color: #1e40af; }
+  &.status-resolved { background: #10b98120; color: #065f46; }
+  &.status-rejected { background: #ef444420; color: #991b1b; }
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.reason, .resolution, .resolution-type {
+  margin-top: 1rem;
+  p { margin: 0.5rem 0 0 0; color: #4b5563; line-height: 1.5; }
+}
+
+.resolve-section {
+  margin-bottom: 1.5rem;
+}
+.btn-toggle {
+  padding: 0.5rem 1rem;
+  background: #f59e0b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  &:hover { background: #d97706; }
+}
+.resolve-form {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+.field {
+  margin-bottom: 1rem;
+  label { display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem; }
+  input, select, textarea {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 300px;
+  }
+  textarea { max-width: 100%; min-height: 80px; }
+}
+.btn-resolve {
+  padding: 0.6rem 1.25rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  &:hover:not(:disabled) { background: #059669; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.messages-section {
+  h3 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+}
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.message-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  .meta { font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem; }
+  .content { color: #1f2937; line-height: 1.5; }
+}
+.no-messages {
+  color: #6b7280;
+  font-style: italic;
+  padding: 1rem 0;
+}
