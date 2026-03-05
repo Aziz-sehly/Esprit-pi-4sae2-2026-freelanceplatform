@@ -1,0 +1,44 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: message-service
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    # Base persistante : données stockées dans ./data/messagedb.mv.db (conservées après redémarrage)
+    url: jdbc:h2:file:./data/messagedb;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+app:
+  upload-dir: ./uploads
+  demo-user-ids: 1,2,3,4,5,6,7,8,9,10
+
+# Keycloak Admin API - pour lister les utilisateurs (voir KEYCLOAK_SETUP.md section 9)
+keycloak:
+  url: http://localhost:8180
+  realm: prolance
+  admin:
+    enabled: true
+    client-id: prolance-backend
+    # Secret du client prolance-backend (Credentials dans Keycloak)
+    # En production : utiliser la variable d'environnement KEYCLOAK_ADMIN_CLIENT_SECRET
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:1kf1KkzyiJTk28tlSatrHgEMlKTzpINy}

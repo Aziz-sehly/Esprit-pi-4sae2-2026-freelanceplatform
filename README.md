@@ -1,17 +1,17 @@
-# ProLance - Application de messagerie et litiges
+# ProLance - Messaging & Disputes Application
 
-Application full-stack de messagerie et gestion des litiges pour la plateforme ProLance.
+Full-stack messaging and dispute management application for the ProLance platform.
 
-**Auteur :** Mohamed Sadok Slimen  
-**Classe :** 4SAE2  
-**Année Universitaire :** 2025-2026
+**Author:** Mohamed Sadok Slimen  
+**Class:** 4SAE2  
+**Academic Year:** 2025-2026
 
 ---
 
 ## Architecture
 
-- **Frontend (Angular)** : Interface utilisateur (ce projet)
-- **Backend (Spring Boot)** : Microservices ProLance-Communication-MS
+- **Frontend (Angular):** User interface (this project root)
+- **Backend (Spring Boot):** Microservices in `/backend` folder
   - Eureka Server (8761)
   - API Gateway (8080)
   - Message Service (8082)
@@ -19,38 +19,53 @@ Application full-stack de messagerie et gestion des litiges pour la plateforme P
 
 ---
 
-## Prérequis
+## Prerequisites
 
 - Node.js 18+
-- npm ou yarn
-- Backend ProLance-Communication-MS démarré (voir section Backend)
+- npm or yarn
+- Java 17+ (for backend)
+- Maven (for backend)
 
 ---
 
-## Installation
+## Quick Start
+
+### 1. Start the Backend
+
+From the `backend` folder, start services in this order:
+
+```bash
+cd backend
+
+# Terminal 1 - Eureka
+cd eureka-server && mvn spring-boot:run
+
+# Terminal 2 - Message Service
+cd message-service && mvn spring-boot:run
+
+# Terminal 3 - Dispute Service
+cd dispute-service && mvn spring-boot:run
+
+# Terminal 4 - API Gateway
+cd api-gateway && mvn spring-boot:run
+```
+
+Eureka dashboard: `http://localhost:8761`
+
+### 2. Start the Frontend
 
 ```bash
 npm install
-```
-
----
-
-## Démarrage
-
-1. Démarrer le backend (Eureka, message-service, dispute-service, api-gateway)
-2. Lancer le frontend :
-
-```bash
 ng serve
 ```
 
-3. Ouvrir `http://localhost:4200`
+Open `http://localhost:4200`
 
 ---
 
-## Configuration du proxy
+## Proxy Configuration
 
-Le proxy (`proxy.conf.json`) redirige vers :
+The proxy (`proxy.conf.json`) routes requests to:
 
 - `/messages` → API Gateway (8080)
 - `/disputes` → API Gateway (8080)
@@ -59,44 +74,40 @@ Le proxy (`proxy.conf.json`) redirige vers :
 
 ---
 
-## Fonctionnalités
+## Features
 
-### Messagerie
-- Messages en temps réel (WebSocket)
-- Indicateur de présence (en ligne / hors ligne)
-- Réactions emoji
-- Fils de discussion (threads)
-- Pièces jointes (images, audio)
-- Messages vocaux
-- Traduction (EN/FR)
-- Tags de conversation
-- Blocage d'utilisateurs
-- Mode hors ligne
+### Messaging
+- Real-time messages (WebSocket)
+- Online/offline presence indicator
+- Emoji reactions
+- Thread replies
+- Attachments (images, audio)
+- Voice messages
+- Translation (EN/FR)
+- Conversation tags
+- User blocking
+- Offline mode
 
-### Litiges
-- Création et gestion des litiges
-- Détail des litiges avec messages liés
+### Disputes
+- Create and manage disputes
+- Dispute details with linked messages
 
 ### Administration
-- Analytics des messages
-- Gestion des blocages
-- Audit des messages
+- Message analytics
+- Block management
+- Message audit
 
 ---
 
-## Backend
+## Gateway Routes
 
-Le backend est dans le projet **ProLance-Communication-MS**. Ordre de démarrage :
-
-1. `eureka-server` (port 8761)
-2. `message-service` (port 8082)
-3. `dispute-service` (port 8083)
-4. `api-gateway` (port 8080)
+- `http://localhost:8080/messages/**` → message-service
+- `http://localhost:8080/disputes/**` → dispute-service
 
 ---
 
 ## Technologies
 
-- **Frontend :** Angular 19, Angular CLI, Keycloak (authentification)
-- **Backend :** Spring Boot, Eureka, Spring Cloud Gateway, OpenFeign
-- **Base de données :** H2 (développement)
+- **Frontend:** Angular 19, Keycloak (authentication)
+- **Backend:** Spring Boot, Eureka, Spring Cloud Gateway, OpenFeign
+- **Database:** H2 (development)
