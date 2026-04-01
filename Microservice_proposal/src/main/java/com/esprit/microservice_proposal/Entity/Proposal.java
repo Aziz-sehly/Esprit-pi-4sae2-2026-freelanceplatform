@@ -33,8 +33,8 @@ public class Proposal {
     @Enumerated(EnumType.STRING)
     private ProposalStatus status;
 
-    private Boolean isInvited;
-    private Integer revisionsOffered;
+    private Boolean isInvited = false;
+    private Integer revisionsOffered =0;
 
     //Expiration
     private LocalDateTime createdAt;
@@ -48,4 +48,6 @@ public class Proposal {
     //Smart Ranking score
     @Column(name = "ranking_score")
     private Double rankingScore;
+
+
 }
