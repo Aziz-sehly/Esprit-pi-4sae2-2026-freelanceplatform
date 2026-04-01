@@ -4,5 +4,7 @@ public enum ProposalStatus {
     PENDING,
     ACCEPTED,
     REJECTED,
-    WITHDRAWN
-}
+    WITHDRAWN,
+    EXPIRED,
+    NEGOTIATING
+    }

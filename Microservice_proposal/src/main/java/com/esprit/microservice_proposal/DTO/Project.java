@@ -18,4 +18,5 @@ public class Project {
     private String duration;
     private String status;
     private LocalDate deadline;
+    private String  clientEmail;
 }

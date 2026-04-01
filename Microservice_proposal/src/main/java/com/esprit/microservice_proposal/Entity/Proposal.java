@@ -2,6 +2,8 @@ package com.esprit.microservice_proposal.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
+
 
 @Entity
 @Getter
@@ -33,4 +35,17 @@ public class Proposal {
 
     private Boolean isInvited;
     private Integer revisionsOffered;
+
+    //Expiration
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+
+    //Counter-Offer
+    private Float   counterOfferPrice;     // prix proposé par le client
+    private String  counterOfferMessage;   // message du client
+    private LocalDateTime counterOfferAt;  // date de la contre-offre
+
+    //Smart Ranking score
+    @Column(name = "ranking_score")
+    private Double rankingScore;
 }
