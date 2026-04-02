@@ -1,7 +1,6 @@
 <div class="wrap">
   <div class="head">
-    <h1>Messages & Communication (Admin)</h1>
-    <p>Real-time, replies, threads, reactions, ephemeral, scheduled, uploads, blocks, audit</p>
+    <h1>Messages & Communication</h1>
   </div>
 
   <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
@@ -123,21 +122,18 @@
         <span class="card-label">Blocks</span>
       </div>
     </div>
-    <div class="analytics-summary">
+    <div class="analytics-charts">
       <h3>Communication features overview</h3>
-      <ul>
-        <li><strong>Real-time:</strong> WebSocket (typing, presence, new messages)</li>
-        <li><strong>Replies & threads:</strong> parentId, threadId</li>
-        <li><strong>Reactions:</strong> Emoji reactions on messages</li>
-        <li><strong>Ephemeral:</strong> Auto-delete after X minutes</li>
-        <li><strong>Scheduled:</strong> Send at specific time</li>
-        <li><strong>Upload:</strong> Single & multiple attachments</li>
-        <li><strong>Block:</strong> Block/unblock users</li>
-        <li><strong>Audit:</strong> Message audit trail</li>
-        <li><strong>Translation:</strong> Translate messages</li>
-        <li><strong>Tags:</strong> Conversation tags</li>
-        <li><strong>Archive:</strong> Archive conversations</li>
-      </ul>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h4>Message metrics</h4>
+          <div id="admin-messages-bar-chart"></div>
+        </div>
+        <div class="chart-card">
+          <h4>Feature distribution</h4>
+          <div id="admin-messages-donut-chart"></div>
+        </div>
+      </div>
     </div>
   </div>
 

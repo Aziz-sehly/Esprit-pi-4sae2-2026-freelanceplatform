@@ -258,6 +258,15 @@
                                 My Profile
                                 <a routerLink="/my-profile" class="link-btn d-block position-absolute"></a>
                             </li>
+                            @if (authService.hasRole('admin')) {
+                            <li class="position-relative transition fw-medium">
+                                <i class="material-symbols-outlined">
+                                    group
+                                </i>
+                                User management
+                                <a routerLink="/back/admin-users" class="link-btn d-block position-absolute"></a>
+                            </li>
+                            }
                             <li class="position-relative transition fw-medium">
                                 <i class="material-symbols-outlined">
                                     settings

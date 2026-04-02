@@ -3,10 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { FreelancerPreferences } from '../models/models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class CandidatureService {
-  private readonly baseUrl = 'http://localhost:8765/candidature';
+  private readonly baseUrl = `${environment.businessApiGatewayUrl}/candidature`;
 
   constructor(private readonly http: HttpClient) {}
 

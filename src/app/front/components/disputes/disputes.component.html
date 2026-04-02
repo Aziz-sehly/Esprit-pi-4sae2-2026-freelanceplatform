@@ -11,8 +11,13 @@
   <!-- Filters -->
   <div class="filters">
     <div class="filter-group">
-      <label>Contract ID</label>
-      <input type="number" [(ngModel)]="filterContractId" placeholder="Ex: 1" (keyup.enter)="applyFilter()" />
+      <label>Contact</label>
+      <select [(ngModel)]="filterOtherUserId" (change)="applyFilter()">
+        <option [ngValue]="null">All contacts</option>
+        <option *ngFor="let ou of uniqueOtherUsers" [ngValue]="ou">
+          {{ getUserLabel(ou) }}
+        </option>
+      </select>
     </div>
     <div class="filter-group">
       <label>Status</label>
@@ -35,13 +40,23 @@
     <h3>Create a dispute</h3>
     <div class="form-row">
       <div class="field">
-        <label>Contract ID</label>
-        <input type="number" [(ngModel)]="createForm.contractId" placeholder="1" />
+        <label>User to dispute with</label>
+        <select
+          [(ngModel)]="selectedOtherUserId"
+          (change)="onOtherUserSelected()"
+        >
+          <option [ngValue]="null">Select a user</option>
+          <option *ngFor="let c of conversations" [ngValue]="c.otherUserId">
+            {{ getUserLabel(c.otherUserId) }} (contract {{ c.contractId }})
+          </option>
+        </select>
       </div>
+
       <div class="field">
-        <label>User (User ID)</label>
-        <input type="number" [(ngModel)]="createForm.raisedByUserId" placeholder="1" />
+        <label>Contract ID</label>
+        <input type="number" [ngModel]="createForm.contractId" disabled />
       </div>
+
       <div class="field">
         <label>Type</label>
         <select [(ngModel)]="createForm.disputeType">

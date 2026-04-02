@@ -102,6 +102,7 @@ export interface Dispute {
   resolutionNote?: string;
   refundAmount?: number;
   createdAt: string;
+  deadlineAt?: string;
   resolvedAt?: string;
 }
 
@@ -128,4 +129,28 @@ export interface ResolveDisputeRequest {
 export interface DisputeDetailsResponse {
   dispute: Dispute;
   relatedMessages: Message[];
+}
+
+export interface Evidence {
+  id: number;
+  disputeId: number;
+  uploaderUserId: number;
+  fileUrl: string;
+  fileName: string;
+  category?: string;
+  adminNote?: string | null;
+  createdAt: string;
+}
+
+export interface EvidenceCreateRequest {
+  fileUrl: string;
+  fileName: string;
+  category?: string;
+}
+
+export interface AuditEvent {
+  eventType: string;
+  actorUserId?: number | null;
+  details?: string | null;
+  createdAt: string;
 }

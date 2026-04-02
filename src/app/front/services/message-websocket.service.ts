@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { environment } from '../../../environments/environment';
 
 export interface TypingEvent {
   type: 'typing';
@@ -23,15 +24,10 @@ export interface PresenceEvent {
 export class MessageWebSocketService {
   private client: Client | null = null;
   private connected = false;
-  private readonly wsUrl = (() => {
-    try {
-      const env = (window as any).environment || {};
-      if (env.production && env.communicationApi) {
-        return env.communicationApi.replace(/^http/, 'ws') + '/ws/messages';
-      }
-    } catch {}
-    return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/messages`;
-  })();
+  /** Dev : même hôte que ng serve + proxy /ws -> ProLance gateway :8080 */
+  private readonly wsUrl = environment.production
+    ? `${environment.prolanceGatewayUrl.replace(/^http/, 'ws')}/ws/messages`
+    : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/messages`;
 
   readonly typing$ = new Subject<TypingEvent>();
   readonly newMessage$ = new Subject<NewMessageEvent>();

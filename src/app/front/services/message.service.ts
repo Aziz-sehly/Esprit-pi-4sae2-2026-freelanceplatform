@@ -12,10 +12,14 @@ export interface UploadResponse {
 
 @Injectable({ providedIn: 'root' })
 export class MessageService {
-  /** Utilise le proxy en dev: /messages -> localhost:8080 */
-  private readonly baseUrl = environment.production ? `${environment.communicationApi}/messages` : '/messages';
-  private readonly uploadUrl = environment.production ? `${environment.communicationApi}/messages/upload` : '/messages-upload';
-  private readonly uploadMultipleUrl = environment.production ? `${environment.communicationApi}/messages/upload-multiple` : '/messages-upload-multiple';
+  /** Dev : proxy -> ProLance api-gateway :8080 ; prod : prolanceGatewayUrl */
+  private readonly baseUrl = environment.production ? `${environment.prolanceGatewayUrl}/messages` : '/messages';
+  private readonly uploadUrl = environment.production
+    ? `${environment.prolanceGatewayUrl}/messages/upload`
+    : '/messages/upload';
+  private readonly uploadMultipleUrl = environment.production
+    ? `${environment.prolanceGatewayUrl}/messages/upload-multiple`
+    : '/messages/upload-multiple';
 
   constructor(private readonly http: HttpClient) {}
 
@@ -231,7 +235,7 @@ export class MessageService {
   }
 
   getBlockedUsers(userId: number): Observable<number[]> {
-    return this.http.get<number[]>(`${this.baseUrl}/block/list`, { params: { userId: String(userId) } }).pipe(
+    return this.http.get<number[]>(`${this.baseUrl}/blocked-ids`, { params: { userId: String(userId) } }).pipe(
       catchError(() => of([]))
     );
   }
@@ -294,7 +298,7 @@ export class MessageService {
 
   getAttachment(url: string): Observable<Blob> {
     const path = url.startsWith('/') ? url : `/${url}`;
-    const fullUrl = environment.production ? `${environment.communicationApi}${path}` : path;
+    const fullUrl = environment.production ? `${environment.prolanceGatewayUrl}${path}` : path;
     return this.http.get(fullUrl, { responseType: 'blob' }).pipe(
       catchError((err) => {
         console.error('MessageService.getAttachment:', err);

@@ -1,23 +1,18 @@
-import { createAuthGuard } from 'keycloak-angular';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from '../front/services/auth.service';
 
-/** Guard : redirige vers Keycloak login si non authentifié */
-export const authGuard = createAuthGuard(
-  async (_, __, { authenticated, keycloak }) => {
-    if (authenticated) return true;
-    await keycloak?.login({ redirectUri: window.location.href });
-    return false;
-  }
-);
+export const authGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  if (authService.isAuthenticated()) return true;
+  return router.createUrlTree(['/front/login']);
+};
 
-/** Guard admin : rôle admin requis, sinon redirige vers login */
-export const adminGuard = createAuthGuard(
-  async (_, __, { authenticated, grantedRoles, keycloak }) => {
-    if (!authenticated) {
-      await keycloak?.login({ redirectUri: window.location.href });
-      return false;
-    }
-    const hasAdmin = grantedRoles.realmRoles.includes('admin') ||
-      Object.values(grantedRoles.resourceRoles).some(roles => roles.includes('admin'));
-    return hasAdmin;
-  }
-);
+export const adminGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  if (!authService.isAuthenticated()) return router.createUrlTree(['/front/login']);
+  if (!authService.hasRole('ADMIN')) return router.createUrlTree(['/front']);
+  return true;
+};

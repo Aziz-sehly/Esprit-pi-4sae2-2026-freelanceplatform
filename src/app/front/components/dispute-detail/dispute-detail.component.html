@@ -53,6 +53,8 @@
         <div><strong>Created by</strong> User {{ details.dispute.raisedByUserId }}</div>
         <div><strong>Type</strong> {{ getDisputeTypeLabel(details.dispute.disputeType) }}</div>
         <div><strong>Created</strong> {{ formatDate(details.dispute.createdAt) }}</div>
+        <div><strong>Deadline</strong> {{ formatDate(details.dispute.deadlineAt) }}</div>
+        <div><strong>Deadline hint</strong> {{ getDeadlineHint(details.dispute.deadlineAt) }}</div>
       </div>
       <div class="reason">
         <strong>Reason</strong>
@@ -65,6 +67,28 @@
       <div *ngIf="details.dispute.resolutionType" class="resolution-type">
         <strong>Resolution type</strong>
         <p>{{ getResolutionLabel(details.dispute.resolutionType) }}</p>
+      </div>
+    </div>
+
+    <!-- Timeline (audit events) -->
+    <div class="timeline-section" *ngIf="!loading && auditEvents">
+      <h3>Timeline</h3>
+      <div *ngIf="auditLoading" class="loading">
+        <div class="spinner"></div>
+        Loading timeline...
+      </div>
+      <div *ngIf="!auditLoading && auditEvents.length" class="timeline-list">
+        <div *ngFor="let ev of auditEvents" class="timeline-item">
+          <div class="timeline-meta">
+            {{ ev.eventType }}
+            <span *ngIf="ev.actorUserId != null"> · actor: {{ ev.actorUserId }}</span>
+          </div>
+          <div class="timeline-details" *ngIf="ev.details">{{ ev.details }}</div>
+          <div class="timeline-date">{{ formatDate(ev.createdAt) }}</div>
+        </div>
+      </div>
+      <div *ngIf="!auditLoading && auditEvents.length === 0" class="no-timeline">
+        No timeline events yet.
       </div>
     </div>
 
@@ -106,6 +130,65 @@
         <button class="btn-resolve" (click)="resolve()" [disabled]="resolving">
           {{ resolving ? 'Processing...' : 'Resolve' }}
         </button>
+      </div>
+    </div>
+
+    <!-- Evidence -->
+    <div id="evidence" class="evidence-section" *ngIf="details">
+      <h3>Evidence</h3>
+
+      <div class="evidence-upload" *ngIf="canUploadEvidence()">
+        <div class="field">
+          <label>Upload an evidence file</label>
+          <input type="file" (change)="onEvidenceFileSelected($event)" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select [(ngModel)]="evidenceCategory">
+            <option value="QUALITY_ISSUE">Quality</option>
+            <option value="PAYMENT_ISSUE">Payment</option>
+            <option value="DELIVERY_ISSUE">Delivery</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <button class="btn-save" (click)="uploadEvidence()" [disabled]="evidenceUploading || !selectedEvidenceFile">
+          {{ evidenceUploading ? 'Uploading...' : 'Upload evidence' }}
+        </button>
+      </div>
+
+      <div *ngIf="evidenceLoading" class="loading">
+        <div class="spinner"></div>
+        Loading evidence...
+      </div>
+
+      <div *ngIf="!evidenceLoading && evidences?.length" class="evidence-list">
+        <div class="evidence-card" *ngFor="let ev of evidences">
+          <a [href]="ev.fileUrl" target="_blank" rel="noopener" class="evidence-link">
+            {{ ev.fileName }}
+          </a>
+          <div class="meta">
+            Uploaded by User {{ ev.uploaderUserId }} · {{ formatDate(ev.createdAt) }}
+            <span *ngIf="ev.category"> · category: {{ ev.category }}</span>
+          </div>
+
+          <div class="admin-note" *ngIf="isAdmin">
+            <div class="field">
+              <label>Admin note</label>
+              <textarea
+                [(ngModel)]="adminNoteDrafts[ev.id]"
+                rows="2"
+                placeholder="Write an internal admin note..."
+              ></textarea>
+            </div>
+            <button class="btn-save" (click)="saveAdminNote(ev)" [disabled]="evidenceUploading">
+              Save note
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!evidenceLoading && (!evidences || evidences.length === 0)" class="no-evidence">
+        No evidence yet.
       </div>
     </div>
 

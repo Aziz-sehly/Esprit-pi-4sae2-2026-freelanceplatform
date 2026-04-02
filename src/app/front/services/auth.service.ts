@@ -1,93 +1,180 @@
-import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
-import Keycloak from 'keycloak-js';
-import { User } from '../models/models';
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
-/** Service d'authentification basé sur Keycloak */
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-  private keycloak = inject(Keycloak) as Keycloak;
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+export type UserRole = 'ADMIN' | 'USER';
 
-  readonly currentUser$ = this.currentUserSubject.asObservable();
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  token: string;
+}
 
-  constructor() {
-    this.updateUserFromKeycloak();
+interface AuthResponse {
+  token: string;
+  id: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+}
+
+/**
+ * Normalizes Angular {@link HttpErrorResponse} and plain error-shaped objects into `{ status, error }`.
+ */
+function httpErrorLike(err: unknown): { status: number; error: unknown } | null {
+  if (err instanceof HttpErrorResponse) {
+    return { status: err.status, error: err.error };
+  }
+  if (err === null || typeof err !== 'object') return null;
+  const o = err as { status?: unknown; error?: unknown };
+  return typeof o.status === 'number' ? { status: o.status, error: o.error } : null;
+}
+
+/** Reads Spring Boot / gateway / ProblemDetail JSON (user-service also maps errors to `{ message }`). */
+export function authHttpErrorMessage(err: unknown, fallback: string): string {
+  const httpErr = httpErrorLike(err);
+  if (!httpErr) return fallback;
+  if (httpErr.status === 0) {
+    return 'Cannot reach the server. Check that the API gateway is running (port 8080).';
   }
 
-  private updateUserFromKeycloak(): void {
-    if (this.keycloak?.authenticated && this.keycloak.tokenParsed) {
-      const parsed = this.keycloak.tokenParsed as Record<string, unknown>;
-      const user: User = {
-        id: String(parsed['sub'] ?? ''),
-        email: String(parsed['email'] ?? parsed['preferred_username'] ?? ''),
-        firstName: String(parsed['given_name'] ?? ''),
-        lastName: String(parsed['family_name'] ?? ''),
-        userType: 'freelancer',
-        profileImage: undefined,
-        createdAt: new Date()
-      };
-      this.currentUserSubject.next(user);
+  let body: unknown = httpErr.error;
+  if (typeof body === 'string') {
+    const t = body.trim();
+    if (!t) {
+      return fallback;
+    }
+    if (t.startsWith('{')) {
+      try {
+        body = JSON.parse(t) as Record<string, unknown>;
+      } catch {
+        return t.length > 280 ? `${t.slice(0, 280)}…` : t;
+      }
     } else {
-      this.currentUserSubject.next(null);
+      return t.length > 280 ? `${t.slice(0, 280)}…` : t;
     }
   }
 
-  /** Redirige vers la page de login Keycloak */
-  login(redirectUri?: string): Promise<void> {
-    return this.keycloak.login({ redirectUri: redirectUri ?? window.location.href });
+  if (body && typeof body === 'object' && !Array.isArray(body)) {
+    const rec = body as Record<string, unknown>;
+    for (const key of ['message', 'detail', 'error', 'title'] as const) {
+      const v = rec[key];
+      if (typeof v === 'string' && v.trim()) {
+        return v.trim();
+      }
+    }
   }
 
-  /** Inscription (redirige vers Keycloak registration) */
-  register(redirectUri?: string): Promise<void> {
-    return this.keycloak.register({ redirectUri: redirectUri ?? window.location.href });
+  return fallback;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private readonly baseUrl = environment.production ? `${environment.prolanceGatewayUrl}/users` : '/users';
+  private readonly storageKey = 'prolance-auth-user';
+  private readonly currentUserSubject = new BehaviorSubject<AuthUser | null>(null);
+
+  readonly currentUser$ = this.currentUserSubject.asObservable();
+
+  constructor(private readonly http: HttpClient, private readonly router: Router) {
+    this.restoreSession();
   }
 
-  /** Déconnexion - redirige vers la page d'accueil après logout */
-  logout(redirectUri?: string): Promise<void> {
+  login(usernameOrEmail: string, password: string): Observable<AuthUser> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, { usernameOrEmail, password }).pipe(
+      tap((resp) => this.setSession(resp))
+    );
+  }
+
+  register(payload: {
+    username: string;
+    email: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  }): Observable<AuthUser> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/register`, payload).pipe(
+      tap((resp) => this.setSession(resp))
+    );
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.storageKey);
     this.currentUserSubject.next(null);
-    const uri = redirectUri ?? `${window.location.origin}/front`;
-    return this.keycloak.logout({ redirectUri: uri });
+    this.router.navigateByUrl('/front');
   }
 
   isAuthenticated(): boolean {
-    return this.keycloak?.authenticated ?? false;
+    return !!this.currentUserSubject.value?.token;
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): AuthUser | null {
     return this.currentUserSubject.value;
   }
 
-  /** Rafraîchit l'utilisateur depuis Keycloak (après login) */
   refreshUser(): void {
-    this.updateUserFromKeycloak();
+    if (!this.isAuthenticated()) return;
+    this.http.get<{
+      id: number;
+      username: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      role: UserRole;
+    }>(`${this.baseUrl}/me`).subscribe({
+      next: (u) => {
+        const existing = this.currentUserSubject.value;
+        if (!existing) return;
+        this.setSession({ ...u, token: existing.token });
+      },
+      error: () => this.logout()
+    });
   }
 
-  /** Vérifie si l'utilisateur a un rôle (insensible à la casse) */
   hasRole(role: string): boolean {
-    const roles = this.keycloak?.realmAccess?.roles ?? [];
-    const resourceRoles = Object.values(this.keycloak?.resourceAccess ?? {}).flatMap(r => r.roles ?? []);
-    const allRoles = [...roles, ...resourceRoles].map(r => String(r).toLowerCase());
-    return allRoles.includes(role.toLowerCase());
+    const currentRole = this.currentUserSubject.value?.role;
+    return currentRole?.toUpperCase() === role.toUpperCase();
   }
 
-  /** Token JWT pour les appels API */
   getToken(): string | undefined {
-    return this.keycloak?.token;
+    return this.currentUserSubject.value?.token;
   }
 
-  /**
-   * Retourne un ID numérique pour les APIs qui attendent un Long.
-   * Utilise un hash déterministe du sub Keycloak (UUID).
-   * À remplacer par un appel à un user-service si disponible.
-   */
   getNumericUserId(): number | null {
-    const user = this.getCurrentUser();
-    if (!user?.id) return null;
-    const hex = user.id.replace(/-/g, '').substring(0, 8);
-    const n = parseInt(hex, 16);
-    return isNaN(n) ? 1 : Math.abs(n) || 1;
+    return this.currentUserSubject.value?.id ?? null;
+  }
+
+  private restoreSession(): void {
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as AuthUser;
+      if (!parsed?.token || !parsed?.id) return;
+      this.currentUserSubject.next(parsed);
+    } catch {
+      localStorage.removeItem(this.storageKey);
+    }
+  }
+
+  private setSession(response: AuthResponse): void {
+    const user: AuthUser = {
+      id: response.id,
+      username: response.username,
+      email: response.email,
+      firstName: response.firstName,
+      lastName: response.lastName,
+      role: response.role,
+      token: response.token
+    };
+    localStorage.setItem(this.storageKey, JSON.stringify(user));
+    this.currentUserSubject.next(user);
   }
 }

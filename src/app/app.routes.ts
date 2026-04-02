@@ -192,7 +192,7 @@ export const routes: Routes = [
     { path: 'back/chat', component: ChatComponent },
     { path: 'back/kanban-board', component: KanbanBoardComponent },
 
-    // Admin - Messages & Disputes only (protégé par Keycloak)
+    // Admin - Messages & Disputes only (protégé par JWT local)
     {
         path: 'back/admin-messages',
         loadComponent: () => import('./admin/admin-messages/admin-messages.component').then(m => m.AdminMessagesComponent),
@@ -206,6 +206,11 @@ export const routes: Routes = [
     {
         path: 'back/admin-disputes/:id',
         loadComponent: () => import('./front/components/dispute-detail/dispute-detail.component').then(m => m.DisputeDetailComponent),
+        canActivate: [adminGuard]
+    },
+    {
+        path: 'back/admin-users',
+        loadComponent: () => import('./admin/admin-users/admin-users.component').then(m => m.AdminUsersComponent),
         canActivate: [adminGuard]
     },
     

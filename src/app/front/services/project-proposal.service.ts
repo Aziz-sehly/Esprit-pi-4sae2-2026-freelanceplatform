@@ -9,14 +9,14 @@ import {
   ProposalStatus,
   Status
 } from '../models/models';
+import { environment } from '../../../environments/environment';
 import { ProjectService } from './project.service';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectProposalService {
 
-  // ── Toutes les URLs passent par l'API Gateway (port 8765) ─────────────────
-  private readonly baseUrl        = 'http://localhost:8765/proposal';
-  private readonly projectBaseUrl = 'http://localhost:8765/project';
+  private readonly baseUrl        = `${environment.businessApiGatewayUrl}/proposal`;
+  private readonly projectBaseUrl = `${environment.businessApiGatewayUrl}/project`;
 
   constructor(
     private readonly http: HttpClient,
@@ -31,7 +31,7 @@ export class ProjectProposalService {
     coverLetter:    string;
   }): Observable<string> {
     return this.http.post(
-      `${this.projectBaseUrl}/notify/new-proposal`,  // localhost:8765/project/notify/new-proposal
+      `${this.projectBaseUrl}/notify/new-proposal`,
       data,
       { responseType: 'text' }
     ).pipe(

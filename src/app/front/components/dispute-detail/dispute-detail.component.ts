@@ -6,11 +6,14 @@ import { DisputeService } from '../../services/dispute.service';
 import { AuthService } from '../../services/auth.service';
 import {
   DisputeDetailsResponse,
+  Evidence,
+  AuditEvent,
   ResolveDisputeRequest,
   UpdateDisputeRequest,
   DisputeStatus,
   ResolutionType
 } from '../../models/communication';
+import { MessageService, UploadResponse } from '../../services/message.service';
 
 @Component({
   selector: 'app-dispute-detail',
@@ -22,6 +25,14 @@ import {
 export class DisputeDetailComponent implements OnInit {
   loading = true;
   details: DisputeDetailsResponse | null = null;
+  evidenceLoading = false;
+  evidences: Evidence[] = [];
+  evidenceUploading = false;
+  selectedEvidenceFile: File | null = null;
+  evidenceCategory: string = 'OTHER';
+  adminNoteDrafts: Record<number, string> = {};
+  auditLoading = false;
+  auditEvents: AuditEvent[] = [];
   alertMessage: string | null = null;
   alertType: 'success' | 'error' | null = null;
 
@@ -44,7 +55,8 @@ export class DisputeDetailComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly disputeService: DisputeService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly messageService: MessageService
   ) {}
 
   ngOnInit(): void {
@@ -63,10 +75,108 @@ export class DisputeDetailComponent implements OnInit {
         this.details = d;
         this.loading = false;
         this.resolveForm.resolvedByUserId = 1; // default admin user
+        this.loadEvidence(id);
+        this.loadAudit(id);
       },
       error: () => {
         this.showAlert('Error loading', 'error');
         this.loading = false;
+      }
+    });
+  }
+
+  loadEvidence(disputeId: number): void {
+    this.evidenceLoading = true;
+    this.disputeService.listEvidence(disputeId).subscribe({
+      next: (list) => {
+        this.evidences = list;
+        this.adminNoteDrafts = {};
+        for (const ev of list) {
+          this.adminNoteDrafts[ev.id] = ev.adminNote ?? '';
+        }
+        this.evidenceLoading = false;
+      },
+      error: () => {
+        this.evidences = [];
+        this.evidenceLoading = false;
+      }
+    });
+  }
+
+  loadAudit(disputeId: number): void {
+    this.auditLoading = true;
+    this.disputeService.listAudit(disputeId).subscribe({
+      next: (events) => {
+        this.auditEvents = events;
+        this.auditLoading = false;
+      },
+      error: () => {
+        this.auditEvents = [];
+        this.auditLoading = false;
+      }
+    });
+  }
+
+  canUploadEvidence(): boolean {
+    if (!this.details) return false;
+    if (this.isAdmin) return true;
+    if (!this.currentUserId) return false;
+    return this.currentUserId === this.details.dispute.raisedByUserId;
+  }
+
+  onEvidenceFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    this.selectedEvidenceFile = file;
+  }
+
+  uploadEvidence(): void {
+    if (!this.details) return;
+    if (!this.selectedEvidenceFile) return;
+    if (!this.canUploadEvidence()) return;
+
+    this.evidenceUploading = true;
+    const disputeId = this.details.dispute.id;
+
+    this.messageService.uploadFile(this.selectedEvidenceFile).subscribe({
+      next: (resp: UploadResponse) => {
+        const payload = {
+          fileUrl: resp.url,
+          fileName: resp.fileName,
+          category: this.evidenceCategory
+        };
+        this.disputeService.addEvidence(disputeId, payload).subscribe({
+          next: () => {
+            this.selectedEvidenceFile = null;
+            this.evidenceCategory = 'OTHER';
+            this.loadEvidence(disputeId);
+            this.evidenceUploading = false;
+            this.showAlert('Evidence uploaded', 'success');
+          },
+          error: (err) => {
+            this.evidenceUploading = false;
+            this.showAlert(err?.error?.message || 'Error uploading evidence', 'error');
+          }
+        });
+      },
+      error: () => {
+        this.evidenceUploading = false;
+        this.showAlert('Error uploading file', 'error');
+      }
+    });
+  }
+
+  saveAdminNote(ev: Evidence): void {
+    if (!this.details) return;
+    const disputeId = this.details.dispute.id;
+    const newNote = (this.adminNoteDrafts[ev.id] ?? '').trim();
+    this.disputeService.adminUpdateEvidenceMetadata(disputeId, ev.id, { adminNote: newNote }).subscribe({
+      next: () => {
+        this.loadEvidence(disputeId);
+        this.showAlert('Evidence note updated', 'success');
+      },
+      error: (err) => {
+        this.showAlert(err.error?.message || 'Error updating note', 'error');
       }
     });
   }
@@ -99,6 +209,17 @@ export class DisputeDetailComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  getDeadlineHint(deadlineAt?: string): string {
+    if (!deadlineAt) return '';
+    const d = new Date(deadlineAt);
+    if (isNaN(d.getTime())) return '';
+    const diffMs = d.getTime() - Date.now();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffMs <= 0) return `Deadline passed`;
+    if (diffDays <= 1) return `Due in ${diffDays} day`;
+    return `Due in ${diffDays} days`;
   }
 
   getStatusLabel(s: string): string {

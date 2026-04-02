@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MessageService } from '../../front/services/message.service';
 import { Message, UserDto, MessageAudit, UserBlockDto } from '../../front/models/communication';
@@ -13,7 +13,7 @@ type AdminTab = 'messages' | 'analytics' | 'blocked' | 'audit';
   templateUrl: './admin-messages.component.html',
   styleUrls: ['./admin-messages.component.scss']
 })
-export class AdminMessagesComponent implements OnInit {
+export class AdminMessagesComponent implements OnInit, OnDestroy {
   loading = true;
   activeTab: AdminTab = 'messages';
 
@@ -30,11 +30,16 @@ export class AdminMessagesComponent implements OnInit {
   editingContent = '';
   updating = false;
 
-  analytics: Record<string, number> = {};
+  analytics: Record<string, number | undefined> = {};
   blocks: UserBlockDto[] = [];
   audits: MessageAudit[] = [];
+  private barChart: { destroy: () => void; render: () => Promise<void> } | null = null;
+  private donutChart: { destroy: () => void; render: () => Promise<void> } | null = null;
 
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    private readonly messageService: MessageService,
+    @Inject(PLATFORM_ID) private platformId: object
+  ) {}
 
   ngOnInit(): void {
     this.loadUsers();
@@ -49,6 +54,68 @@ export class AdminMessagesComponent implements OnInit {
     if (tab === 'analytics') this.loadAnalytics();
     if (tab === 'blocked') this.loadBlocks();
     if (tab === 'audit') this.loadAudits();
+  }
+
+  private async renderCharts(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      const ApexCharts = (await import('apexcharts')).default;
+      const total = this.analytics['totalMessages'] ?? 0;
+      const ephemeral = this.analytics['ephemeralMessages'] ?? 0;
+      const scheduled = this.analytics['scheduledMessages'] ?? 0;
+      const replies = this.analytics['replyMessages'] ?? 0;
+      const attachments = this.analytics['messagesWithAttachments'] ?? 0;
+      const reactions = this.analytics['totalReactions'] ?? 0;
+      const blocks = this.analytics['totalBlocks'] ?? 0;
+
+      const barEl = document.querySelector('#admin-messages-bar-chart');
+      if (barEl) {
+        this.barChart?.destroy();
+        this.barChart = new ApexCharts(barEl, {
+          series: [{
+            name: 'Count',
+            data: [total, ephemeral, scheduled, replies, attachments, reactions, blocks]
+          }],
+          chart: { type: 'bar', height: 280, toolbar: { show: false } },
+          colors: ['#3b82f6'],
+          plotOptions: { bar: { borderRadius: 6, columnWidth: '60%' } },
+          dataLabels: { enabled: false },
+          xaxis: {
+            categories: ['Total', 'Ephemeral', 'Scheduled', 'Replies', 'Attachments', 'Reactions', 'Blocks'],
+            labels: { style: { colors: '#6b7280', fontSize: '12px' } }
+          },
+          yaxis: { labels: { style: { colors: '#6b7280' } } },
+          grid: { borderColor: '#e5e7eb', strokeDashArray: 4 }
+        });
+        this.barChart.render();
+      }
+
+      const donutEl = document.querySelector('#admin-messages-donut-chart');
+      if (donutEl) {
+        this.donutChart?.destroy();
+        const standard = Math.max(0, total - ephemeral - scheduled);
+        const donutSeries = [standard, ephemeral, scheduled, attachments, replies, reactions, blocks];
+        const sum = donutSeries.reduce((a, b) => a + b, 0);
+        this.donutChart = new ApexCharts(donutEl, {
+          series: sum > 0 ? donutSeries : [1],
+          chart: { type: 'donut', height: 280 },
+          labels: sum > 0
+            ? ['Standard', 'Ephemeral', 'Scheduled', 'Attachments', 'Replies', 'Reactions', 'Blocks']
+            : ['No data'],
+          colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#ef4444'],
+          legend: { position: 'bottom', fontSize: '12px' },
+          plotOptions: { pie: { donut: { size: '60%' } } }
+        });
+        this.donutChart.render();
+      }
+    } catch (e) {
+      console.error('Chart render error:', e);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.barChart?.destroy();
+    this.donutChart?.destroy();
   }
 
   loadUsers(): void {
@@ -80,7 +147,12 @@ export class AdminMessagesComponent implements OnInit {
 
   loadAnalytics(): void {
     this.messageService.getAdminAnalytics().subscribe({
-      next: (a) => (this.analytics = a)
+      next: (a) => {
+        this.analytics = a;
+        if (this.activeTab === 'analytics' && isPlatformBrowser(this.platformId)) {
+          setTimeout(() => this.renderCharts(), 100);
+        }
+      }
     });
   }
 

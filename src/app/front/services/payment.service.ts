@@ -6,7 +6,7 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class PaymentService {
-    private base = `${environment.apiGateway}/payment/api/payments`;
+    private base = `${environment.businessApiGatewayUrl}/payment/api/payments`;
 
     constructor(private http: HttpClient) {}
 

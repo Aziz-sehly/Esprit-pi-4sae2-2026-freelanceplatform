@@ -4,12 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { DisputeService } from '../../services/dispute.service';
 import { AuthService } from '../../services/auth.service';
+import { MessageService } from '../../services/message.service';
 import {
   Dispute,
   CreateDisputeRequest,
+  ConversationDto,
+  UserDto,
   UpdateDisputeRequest,
   DisputeStatus
 } from '../../models/communication';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-disputes',
@@ -21,10 +26,14 @@ import {
 export class DisputesComponent implements OnInit {
   loading = true;
   disputes: Dispute[] = [];
-  filterContractId = '';
   filterStatus = '';
+  filterOtherUserId: number | null = null;
   alertMessage: string | null = null;
   alertType: 'success' | 'error' | null = null;
+
+  conversations: ConversationDto[] = [];
+  selectedOtherUserId: number | null = null;
+  users: UserDto[] = [];
 
   createForm: CreateDisputeRequest = {
     contractId: 0,
@@ -41,17 +50,66 @@ export class DisputesComponent implements OnInit {
 
   constructor(
     private readonly disputeService: DisputeService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly messageService: MessageService
   ) {}
 
   ngOnInit(): void {
     const uid = this.authService.getNumericUserId();
     if (uid) this.createForm.raisedByUserId = uid;
+
+    // Charger les “contacts” disponibles (autres utilisateurs) via les conversations messages.
+    if (uid) {
+      // Récupère les noms/emails des contacts pour afficher un dropdown lisible.
+      this.messageService.getUsers(uid).subscribe({
+        next: (uList) => {
+          this.users = uList ?? [];
+        },
+        error: () => {
+          this.users = [];
+        }
+      });
+
+      this.messageService.getConversations(uid).subscribe({
+        next: (list) => {
+          this.conversations = list;
+          // Pré-sélectionne le premier contact si disponible.
+          if (!this.selectedOtherUserId && list.length > 0) {
+            this.selectedOtherUserId = list[0].otherUserId;
+            this.setContractFromOtherUser(this.selectedOtherUserId);
+          }
+        },
+        error: () => {
+          this.conversations = [];
+        }
+      });
+    }
+
     this.loadDisputes();
   }
 
   get currentUserId(): number | null {
     return this.authService.getNumericUserId();
+  }
+
+  get uniqueOtherUsers(): number[] {
+    const set = new Set<number>();
+    for (const c of this.conversations ?? []) {
+      if (c?.otherUserId == null) continue;
+      set.add(c.otherUserId);
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  }
+
+  getUserLabel(userId: number): string {
+    const u = this.users?.find(x => x?.id === userId);
+    const first = u?.firstName?.trim();
+    const last = u?.lastName?.trim();
+    const fullName = first || last ? [first, last].filter(Boolean).join(' ') : null;
+    if (fullName) return fullName;
+    if (u?.username?.trim()) return u.username!.trim();
+    if (u?.email?.trim()) return u.email!.trim();
+    return `User ${userId}`;
   }
 
   canEdit(d: Dispute): boolean {
@@ -109,10 +167,39 @@ export class DisputesComponent implements OnInit {
 
   loadDisputes(): void {
     this.loading = true;
-    const contractId = this.filterContractId ? +this.filterContractId : undefined;
     const status = this.filterStatus ? (this.filterStatus as DisputeStatus) : undefined;
 
-    this.disputeService.list(contractId, status).subscribe({
+    // Si un contact est sélectionné, on peut avoir plusieurs conversations (donc plusieurs contractId).
+    if (this.filterOtherUserId != null) {
+      const contractIds = this.conversations
+        .filter(c => c.otherUserId === this.filterOtherUserId)
+        .map(c => c.contractId);
+
+      const deduped = Array.from(new Set<number>(contractIds));
+      if (deduped.length === 0) {
+        this.disputes = [];
+        this.loading = false;
+        return;
+      }
+
+      const requests = deduped.map(cid => this.disputeService.list(cid, status));
+      forkJoin(requests).pipe(
+        map((lists) => lists.flat()),
+        map((merged) => Array.from(new Map(merged.map(d => [d.id, d])).values()))
+      ).subscribe({
+        next: (list) => {
+          this.disputes = list;
+          this.loading = false;
+        },
+        error: () => {
+          this.showAlert('Error loading disputes', 'error');
+          this.loading = false;
+        }
+      });
+      return;
+    }
+
+    this.disputeService.list(undefined, status).subscribe({
       next: (list) => {
         this.disputes = list;
         this.loading = false;
@@ -130,7 +217,7 @@ export class DisputesComponent implements OnInit {
       return;
     }
     if (!this.createForm.contractId || !this.createForm.raisedByUserId) {
-      this.showAlert('Contract ID and User ID are required', 'error');
+      this.showAlert('Select a user to dispute with', 'error');
       return;
     }
     this.creating = true;
@@ -147,6 +234,16 @@ export class DisputesComponent implements OnInit {
         this.creating = false;
       }
     });
+  }
+
+  onOtherUserSelected(): void {
+    if (this.selectedOtherUserId == null) return;
+    this.setContractFromOtherUser(this.selectedOtherUserId);
+  }
+
+  private setContractFromOtherUser(otherUserId: number): void {
+    const conv = this.conversations.find(c => c.otherUserId === otherUserId);
+    this.createForm.contractId = conv?.contractId ?? 0;
   }
 
   applyFilter(): void {

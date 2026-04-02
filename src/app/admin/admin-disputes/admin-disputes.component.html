@@ -52,6 +52,14 @@
       <div>{{ formatDate(d.createdAt) }}</div>
       <div class="actions-cell">
         <a [routerLink]="['/back/admin-disputes', d.id]" [queryParams]="{admin: 'true'}" class="btn-resolve">Resolve</a>
+        <a
+          [routerLink]="['/back/admin-disputes', d.id]"
+          [queryParams]="{admin: 'true'}"
+          [fragment]="'evidence'"
+          class="btn-evidence"
+        >
+          Evidence
+        </a>
         <button type="button" class="btn-edit" (click)="startEdit(d)" title="Edit">✎</button>
         <button type="button" class="btn-delete" (click)="deleteDispute(d)" title="Delete">×</button>
       </div>

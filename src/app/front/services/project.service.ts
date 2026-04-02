@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { Experience, Project, ProjectFilters, ProjectStatsDTO, SearchResult, Status } from '../models/models';
+import { environment } from '../../../environments/environment';
 
 // ── AI Suggest DTOs ───────────────────────────────────────────────────────────
 export interface AISuggestRequest  { description: string; duration: string; }
@@ -11,8 +12,8 @@ export interface AISuggestResponse { title: string; skills: string; budgetMin: n
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
 
-  // ── Toutes les URLs passent par l'API Gateway (port 8765) ─────────────────
-  private readonly baseUrl = 'http://localhost:8765/project';
+  /** Gateway métier (hors dépôt ProLance-Communication-MS), ex. port 8765 */
+  private readonly baseUrl = `${environment.businessApiGatewayUrl}/project`;
 
   private readonly projectsSubject = new BehaviorSubject<Project[]>([]);
   readonly projects$ = this.projectsSubject.asObservable();

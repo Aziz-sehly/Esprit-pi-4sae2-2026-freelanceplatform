@@ -8,14 +8,17 @@ import {
   CreateDisputeRequest,
   UpdateDisputeRequest,
   ResolveDisputeRequest,
-  DisputeStatus
+  DisputeStatus,
+  Evidence,
+  EvidenceCreateRequest,
+  AuditEvent
 } from '../models/communication';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class DisputeService {
-  /** Utilise le proxy en dev: /disputes -> localhost:8080 */
-  private readonly baseUrl = environment.production ? `${environment.communicationApi}/disputes` : '/disputes';
+  /** Dev : proxy -> ProLance api-gateway :8080 */
+  private readonly baseUrl = environment.production ? `${environment.prolanceGatewayUrl}/disputes` : '/disputes';
 
   constructor(private readonly http: HttpClient) {}
 
@@ -37,6 +40,7 @@ export class DisputeService {
     );
   }
 
+  /** Current user's disputes only (even if the account is ADMIN). */
   list(contractId?: number, status?: DisputeStatus): Observable<Dispute[]> {
     let params = new HttpParams();
     if (contractId != null) params = params.set('contractId', String(contractId));
@@ -44,6 +48,19 @@ export class DisputeService {
     return this.http.get<Dispute[]>(this.baseUrl, { params }).pipe(
       catchError((err) => {
         console.error('DisputeService.list:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /** Back-office: all disputes (requires ADMIN; gateway → GET /disputes/admin). */
+  listAllForAdmin(contractId?: number, status?: DisputeStatus): Observable<Dispute[]> {
+    let params = new HttpParams();
+    if (contractId != null) params = params.set('contractId', String(contractId));
+    if (status != null) params = params.set('status', status);
+    return this.http.get<Dispute[]>(`${this.baseUrl}/admin`, { params }).pipe(
+      catchError((err) => {
+        console.error('DisputeService.listAllForAdmin:', err);
         return of([]);
       })
     );
@@ -102,6 +119,45 @@ export class DisputeService {
     return this.http.delete<void>(`${this.baseUrl}/admin/${id}`).pipe(
       catchError((err) => {
         console.error('DisputeService.adminDelete:', err);
+        throw err;
+      })
+    );
+  }
+
+  listEvidence(disputeId: number): Observable<Evidence[]> {
+    return this.http.get<Evidence[]>(`${this.baseUrl}/${disputeId}/evidence`).pipe(
+      catchError((err) => {
+        console.error('DisputeService.listEvidence:', err);
+        return of([]);
+      })
+    );
+  }
+
+  addEvidence(disputeId: number, payload: EvidenceCreateRequest): Observable<Evidence> {
+    return this.http.post<Evidence>(`${this.baseUrl}/${disputeId}/evidence`, payload).pipe(
+      catchError((err) => {
+        console.error('DisputeService.addEvidence:', err);
+        throw err;
+      })
+    );
+  }
+
+  listAudit(disputeId: number): Observable<AuditEvent[]> {
+    return this.http.get<AuditEvent[]>(`${this.baseUrl}/${disputeId}/audit`).pipe(
+      catchError((err) => {
+        console.error('DisputeService.listAudit:', err);
+        return of([]);
+      })
+    );
+  }
+
+  adminUpdateEvidenceMetadata(disputeId: number, evidenceId: number, payload: { category?: string | null; adminNote?: string | null }): Observable<Evidence> {
+    return this.http.patch<Evidence>(
+      `${this.baseUrl}/${disputeId}/evidence/${evidenceId}`,
+      payload
+    ).pipe(
+      catchError((err) => {
+        console.error('DisputeService.adminUpdateEvidenceMetadata:', err);
         throw err;
       })
     );

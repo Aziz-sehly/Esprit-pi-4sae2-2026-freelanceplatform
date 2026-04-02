@@ -126,6 +126,17 @@
   font-weight: 500;
   &:hover { background: #d97706; }
 }
+
+.btn-evidence {
+  padding: 0.4rem 0.8rem;
+  background: #2563eb;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  &:hover { background: #1d4ed8; }
+}
 .btn-edit, .btn-delete {
   padding: 0.2rem 0.5rem;
   border: none;

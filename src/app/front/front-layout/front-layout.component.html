@@ -15,6 +15,7 @@
         <span class="user-name" *ngIf="authService.isAuthenticated()">{{ authService.getCurrentUser()?.email }}</span>
         <button type="button" class="btn btn-outline" (click)="logout()" *ngIf="authService.isAuthenticated()">Logout</button>
         <a routerLink="/back" class="btn btn-dashboard" *ngIf="authService.isAuthenticated() && authService.hasRole('admin')">Admin area</a>
+        <a routerLink="/back/admin-users" class="btn btn-dashboard" *ngIf="authService.isAuthenticated() && authService.hasRole('admin')">User management</a>
       </div>
     </div>
   </header>

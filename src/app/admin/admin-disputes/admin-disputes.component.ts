@@ -35,7 +35,7 @@ export class AdminDisputesComponent implements OnInit {
     const contractId = this.filterContractId ? +this.filterContractId : undefined;
     const status = this.filterStatus ? (this.filterStatus as DisputeStatus) : undefined;
 
-    this.disputeService.list(contractId, status).subscribe({
+    this.disputeService.listAllForAdmin(contractId, status).subscribe({
       next: (list) => {
         this.disputes = list;
         this.loading = false;
