@@ -1,27 +1,40 @@
-# Daxa
+# ProLance Communication Backend (Microservices)
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.0.
+Spring Boot microservices backend for **Messages** and **Disputes**, modeled after the AWD-Training workshop style (Eureka + service-to-service communication).
 
-## Development server
+## Services
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- `eureka-server` (port `8761`)
+- `api-gateway` (port `8080`)
+- `message-service` (port `8082`)
+- `dispute-service` (port `8083`)
 
-## Code scaffolding
+`dispute-service` uses **OpenFeign** to call `message-service` and expose an enriched endpoint:
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+- `GET /api/disputes/{id}/details`
 
-## Build
+## Quick Start
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+1. Start `eureka-server`
+2. Start `message-service`
+3. Start `dispute-service`
+4. Start `api-gateway`
 
-## Running unit tests
+Then open Eureka dashboard: `http://localhost:8761`
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Gateway Routes
 
-## Running end-to-end tests
+- `http://localhost:8080/messages/**` -> `message-service` (`/api/messages/**`)
+- `http://localhost:8080/disputes/**` -> `dispute-service` (`/api/disputes/**`)
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+Examples:
 
-## Further help
+- `GET http://localhost:8080/messages/contracts/10`
+- `GET http://localhost:8080/disputes/1/details`
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+## Notes
+
+- Database: H2 in-memory per service (easy local dev)
+- Discovery: Eureka service registry
+- Inter-service: OpenFeign (`dispute-service` -> `message-service`)
+- Entry point for clients: `api-gateway`
