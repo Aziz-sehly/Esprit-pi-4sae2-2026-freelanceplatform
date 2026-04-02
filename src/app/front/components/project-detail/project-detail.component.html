@@ -1,0 +1,101 @@
+<div class="wrap" *ngIf="!loading && project; else loadingTpl">
+  <div class="topbar">
+    <button type="button" class="link" (click)="back()">← Back</button>
+    <div class="title">
+      <h1>{{ project.title }}</h1>
+      <div class="sub">
+        <span class="pill">{{ project.status }}</span>
+        <span class="muted">Category: {{ project.category }}</span>
+        <span class="muted">Deadline: {{ project.deadline | date: 'yyyy-MM-dd' }}</span>
+        <a *ngIf="isClient" [routerLink]="['/front/projects', project.id, 'edit']" class="link">Edit</a>
+        <button *ngIf="isClient" type="button" class="link btn-delete-inline" (click)="deleteProject($event)">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <section class="main">
+      <div class="card">
+        <h2>Description</h2>
+        <p class="desc">{{ project.description }}</p>
+      </div>
+
+      <div class="card">
+        <h2>Budget</h2>
+        <p class="budget">${{ project.budgetMin }} - ${{ project.budgetMax }}</p>
+      </div>
+
+      <div class="card">
+        <h2>Skills</h2>
+        <div class="skills">
+          <span class="tag" *ngFor="let s of project.skills">{{ s }}</span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="side-card" *ngIf="!isClient && !showProposalForm">
+        <button type="button" class="primary" (click)="openForm()">Submit a proposal</button>
+        <p class="hint">Stand out from other proposals</p>
+      </div>
+
+      <div class="side-card" *ngIf="!isClient && showProposalForm">
+        <h3>Submit your proposal</h3>
+        <label class="field">
+          <span>Proposed budget</span>
+          <input type="number" [(ngModel)]="proposedBudget" />
+        </label>
+        <label class="field">
+          <span>Delivery time (days)</span>
+          <input type="number" min="1" [(ngModel)]="deliveryDays" placeholder="e.g. 14" />
+        </label>
+        <label class="field">
+          <span>Cover letter</span>
+          <textarea rows="8" [(ngModel)]="coverLetter" placeholder="Why you're the best candidate..." required></textarea>
+        </label>
+
+        <button type="button" class="primary" (click)="submit()" [disabled]="submitting">
+          {{ submitting ? 'Sending...' : 'Send' }}
+        </button>
+        <button type="button" class="secondary" (click)="cancelForm()">Cancel</button>
+      </div>
+
+      <div class="side-card proposals" *ngIf="isClient">
+        <div class="proposals-head">
+          <h3>Received proposals ({{ proposals.length }})</h3>
+          <select [(ngModel)]="sort" (change)="loadProposals()">
+            <option value="">Default</option>
+            <option value="priceDesc">Budget (desc)</option>
+            <option value="durationDesc">Duration (desc)</option>
+          </select>
+        </div>
+
+        <div class="loading" *ngIf="proposalsLoading">Loading...</div>
+
+        <div class="proposal" *ngFor="let p of proposals">
+          <div class="row">
+            <div class="price">${{ p.proposedBudget }}</div>
+            <div class="pill small">{{ p.status }}</div>
+          </div>
+          <div class="muted">{{ p.estimatedDuration }}</div>
+          <p class="cover">{{ p.coverLetter }}</p>
+
+          <div class="actions" *ngIf="isClient && p.status === 'PENDING'">
+            <button type="button" class="btn-action btn-accept" (click)="acceptProposal(p.id, $event)">Accept</button>
+            <button type="button" class="btn-action btn-reject" (click)="rejectProposal(p.id, $event)">Reject</button>
+            <button type="button" class="btn-action btn-cancel" (click)="hideProposal(p.id, $event)">Hide</button>
+          </div>
+        </div>
+
+        <div class="empty" *ngIf="!proposalsLoading && proposals.length === 0">
+          No proposals for this project.
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<ng-template #loadingTpl>
+  <div class="loading-page">Loading...</div>
+</ng-template>
+

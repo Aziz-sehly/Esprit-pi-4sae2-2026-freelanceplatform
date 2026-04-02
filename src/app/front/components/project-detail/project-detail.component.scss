@@ -1,0 +1,266 @@
+.wrap {
+  font-family: 'DM Sans', sans-serif;
+  background: #f8f9fb;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.topbar {
+  max-width: 1400px;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.title {
+  flex: 1;
+  h1 {
+    margin: 0;
+    font-family: 'Syne', sans-serif;
+    color: #0a0e27;
+  }
+}
+
+.sub {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.grid {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 1.5rem;
+}
+
+.card,
+.side-card {
+  background: white;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  padding: 1.5rem;
+}
+
+h2,
+h3 {
+  margin: 0 0 1rem 0;
+  font-family: 'Syne', sans-serif;
+  color: #0a0e27;
+}
+
+.desc {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.75;
+}
+
+.budget {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #00d9ff;
+  margin: 0;
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  background: #f8f9fb;
+  border: 1px solid #e5e7eb;
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-weight: 900;
+  font-size: 0.8rem;
+
+  &.small {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+  }
+}
+
+.muted {
+  color: #6b7280;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.link {
+  background: transparent;
+  border: none;
+  color: #00d9ff;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.btn-delete-inline {
+  color: #ef4444 !important;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.primary {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  color: #0a0e27;
+  background: linear-gradient(135deg, #00d9ff 0%, #0099ff 100%);
+}
+
+.secondary {
+  width: 100%;
+  margin-top: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  background: transparent;
+  color: #6b7280;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.9rem;
+
+  span {
+    font-weight: 900;
+    color: #374151;
+    font-size: 0.88rem;
+  }
+
+  input,
+  textarea,
+  select {
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.95rem;
+    outline: none;
+    font-family: inherit;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: #00d9ff;
+  }
+}
+
+.proposals-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  select {
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 0.55rem 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+}
+
+.proposal {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.price {
+  font-weight: 1000;
+  color: #0a0e27;
+}
+
+.cover {
+  margin: 0.6rem 0 0.75rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.2s, color 0.2s;
+
+  &.btn-accept {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+    &:hover { background: #059669; border-color: #059669; }
+  }
+  &.btn-reject {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    &:hover { background: #dc2626; border-color: #dc2626; }
+  }
+  &.btn-cancel {
+    background: #f3f4f6;
+    color: #4b5563;
+    border-color: #e5e7eb;
+    &:hover { background: #e5e7eb; color: #374151; }
+  }
+}
+
+.loading-page {
+  padding: 2rem;
+  color: #6b7280;
+}
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+

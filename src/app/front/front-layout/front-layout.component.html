@@ -1,0 +1,37 @@
+<div class="app-container">
+  <header class="main-header">
+    <div class="header-content">
+      <a routerLink="/front" class="logo">Prolance</a>
+      
+      <nav class="main-nav">
+        <a routerLink="/front" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+        <a routerLink="/front/profile-client" routerLinkActive="active">Client Profile</a>
+        <a routerLink="/front/profile-freelancer" routerLinkActive="active">Freelancer Profile</a>
+        <a routerLink="/front/about" routerLinkActive="active">About</a>
+      </nav>
+
+      <div class="user-section">
+        <a routerLink="/front/login" class="btn btn-outline">Login</a>
+        <a routerLink="/front/register" class="btn btn-primary">Sign Up</a>
+        <a routerLink="/back" class="btn btn-dashboard">Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Prolance</h3>
+        <p>Connect with top freelancers. Get your projects done faster and more efficiently.</p>
+        <a routerLink="/front/about">Learn more (About)</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 Prolance. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

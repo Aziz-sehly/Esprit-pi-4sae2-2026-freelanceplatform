@@ -1,0 +1,132 @@
+<div class="home-container">
+  <section class="hero-section">
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1 class="hero-title">
+          Find the perfect
+          <span class="gradient-text">freelance</span>
+          services for your business
+        </h1>
+        <p class="hero-subtitle">
+          Connect with top-tier talent from around the world. Get your projects done faster and better.
+        </p>
+        <div class="cta-buttons">
+          <a routerLink="/front/profile-client" class="btn-primary">Post Jobs</a>
+          <a routerLink="/front/profile-freelancer" class="btn-secondary">Find Jobs</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="floating-card card-1">
+          <div class="card-icon">💼</div>
+          <div class="card-text">
+            <div class="card-title">Full Stack Developer</div>
+            <div class="card-subtitle">$5,000 - Fixed Price</div>
+          </div>
+        </div>
+        <div class="floating-card card-2">
+          <div class="card-icon">🎨</div>
+          <div class="card-text">
+            <div class="card-title">UI/UX Designer</div>
+            <div class="card-subtitle">$45/hr - Hourly</div>
+          </div>
+        </div>
+        <div class="floating-card card-3">
+          <div class="card-icon">✍️</div>
+          <div class="card-text">
+            <div class="card-title">Content Writer</div>
+            <div class="card-subtitle">$1,500 - Fixed Price</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">500K+</div>
+        <div class="stat-label">Active Freelancers</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">1M+</div>
+        <div class="stat-label">Jobs Posted</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">$2B+</div>
+        <div class="stat-label">Total Earnings</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">150+</div>
+        <div class="stat-label">Countries</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="categories-section">
+    <h2 class="section-title">Browse by Category</h2>
+    <div class="categories-grid">
+      <div class="category-card" *ngFor="let category of categories">
+        <div class="category-icon">{{ category.icon }}</div>
+        <h3>{{ category.name }}</h3>
+        <p>{{ category.jobs }} jobs available</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-it-works">
+    <h2 class="section-title">How It Works</h2>
+    <div class="steps-grid">
+      <div class="step-item">
+        <div class="step-number">01</div>
+        <h3>Post a Job</h3>
+        <p>Describe your project and what you need. It's free and takes only minutes.</p>
+      </div>
+      <div class="step-number-connector"></div>
+      <div class="step-item">
+        <div class="step-number">02</div>
+        <h3>Choose Freelancers</h3>
+        <p>Review proposals and select the best fit for your project needs.</p>
+      </div>
+      <div class="step-number-connector"></div>
+      <div class="step-item">
+        <div class="step-number">03</div>
+        <h3>Pay Safely</h3>
+        <p>Only pay for work you approve. Your payment is protected every step of the way.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-section" id="about">
+    <h2 class="section-title">About Prolance</h2>
+    <div class="about-content">
+      <p class="about-lead">
+        Prolance connects businesses with top freelancers to bring projects to life.
+      </p>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="about-icon">🎯</div>
+          <h3>Our mission</h3>
+          <p>Make client-freelancer collaboration easy with a simple, secure, and high-performance platform.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-icon">💼</div>
+          <h3>For clients</h3>
+          <p>Post projects, receive proposals, and choose the best freelancers for your needs.</p>
+        </div>
+        <div class="about-card">
+          <div class="about-icon">🚀</div>
+          <h3>For freelancers</h3>
+          <p>Find projects, submit proposals, and grow your business with freedom.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="cta-content">
+      <h2>Ready to get started?</h2>
+      <p>Join thousands of professionals on Prolance</p>
+      <a routerLink="/front/register" class="btn-primary">Sign up for free</a>
+    </div>
+  </section>
+</div>
