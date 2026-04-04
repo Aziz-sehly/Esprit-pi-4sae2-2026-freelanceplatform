@@ -1,46 +1,66 @@
 <div class="profile-wrap">
+
+  <!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
   <div class="profile-header">
-    <div class="cover-photo" [style.background-image]="coverPhotoUrl ? 'url(' + coverPhotoUrl + ')' : null"></div>
+    <div class="cover-photo"
+         [style.background-image]="coverPhotoUrl ? 'url(' + coverPhotoUrl + ')' : null">
+    </div>
     <div class="profile-photo-wrap">
-      <div class="profile-photo" [style.background-image]="profilePhotoUrl ? 'url(' + profilePhotoUrl + ')' : null">
+      <div class="profile-photo"
+           [style.background-image]="profilePhotoUrl ? 'url(' + profilePhotoUrl + ')' : null">
         <span *ngIf="!profilePhotoUrl">💼</span>
+      </div>
+      <div class="profile-top-right">
+        <button type="button" class="btn-top" (click)="scrollTo('section-propositions')">
+          📋 My Proposals
+        </button>
+        <button type="button" class="btn-top" (click)="scrollTo('section-projets')">
+          🔍 Find Work
+        </button>
       </div>
     </div>
   </div>
 
+  <!-- ══ BODY ════════════════════════════════════════════════════════════════ -->
   <div class="profile-body">
+
+    <!-- Breadcrumb -->
     <div class="breadcrumb-card">
-      <h5>Freelancer Profile</h5>
+      <h5>Freelancer Dashboard</h5>
       <ol class="breadcrumb">
         <li><a routerLink="/front">Prolance</a></li>
         <li>Freelancer Profile</li>
       </ol>
     </div>
 
-    <div class="action-buttons-bar">
-      <button type="button" class="btn-action" (click)="scrollTo('section-propositions')">View proposals</button>
-      <button type="button" class="btn-action" (click)="scrollTo('section-projets')">Find Work</button>
-    </div>
-
-    <!-- Stats proposals -->
+    <!-- ── Proposal Stats ─────────────────────────────────────────────────── -->
     <div class="stats-row">
       <div class="stat-card">
-        <h5>Total proposals</h5>
-        <div class="stat-number">{{ totalProposals }}</div>
+        <div class="stat-icon-wrap" style="background:#fff1f2">📤</div>
+        <div>
+          <h5>Total Proposals</h5>
+          <div class="stat-number">{{ totalProposals }}</div>
+        </div>
       </div>
       <div class="stat-card">
-        <h5>Pending</h5>
-        <div class="stat-number">{{ pendingProposals }}</div>
+        <div class="stat-icon-wrap" style="background:#fffbeb">⏳</div>
+        <div>
+          <h5>Pending</h5>
+          <div class="stat-number">{{ pendingProposals }}</div>
+        </div>
       </div>
       <div class="stat-card">
-        <h5>Accepted</h5>
-        <div class="stat-number">{{ acceptedProposals }}</div>
+        <div class="stat-icon-wrap" style="background:#ecfdf5">✅</div>
+        <div>
+          <h5>Accepted</h5>
+          <div class="stat-number">{{ acceptedProposals }}</div>
+        </div>
       </div>
     </div>
 
-    <!-- Detailed Stats Card -->
+    <!-- ── Detailed Stats ─────────────────────────────────────────────────── -->
     <div class="section-card stats-detailed-card" *ngIf="detailedStats">
-      <h5>📊 Performance Details</h5>
+      <div class="card-head"><h5>📊 Performance Details</h5></div>
       <div class="detailed-stats-grid">
         <div class="stat-detail">
           <span class="stat-label">Acceptance Rate</span>
@@ -50,16 +70,16 @@
           </div>
         </div>
         <div class="stat-detail">
-          <span class="stat-label">Average Proposed Price</span>
+          <span class="stat-label">Avg Proposed Price</span>
           <span class="stat-value">${{ detailedStats.avgProposedPrice | number:'1.0-0' }}</span>
         </div>
         <div class="stat-detail">
-          <span class="stat-label">Average Delivery (days)</span>
-          <span class="stat-value">{{ detailedStats.avgDeliveryDays | number:'1.1-1' }} days</span>
+          <span class="stat-label">Avg Delivery (days)</span>
+          <span class="stat-value">{{ detailedStats.avgDeliveryDays | number:'1.1-1' }}d</span>
         </div>
         <div class="stat-detail">
           <span class="stat-label">Response Time</span>
-          <span class="stat-value">{{ detailedStats.avgResponseTimeHours | number:'1.0-0' }} hours</span>
+          <span class="stat-value">{{ detailedStats.avgResponseTimeHours | number:'1.0-0' }}h</span>
         </div>
       </div>
       <div class="stats-breakdown">
@@ -82,373 +102,435 @@
       </div>
     </div>
 
-    <!-- Market overview chart -->
-    <div class="section-card chart-card" *ngIf="stats">
-      <h5>Market overview</h5>
-      <div class="static-chart">
-        <div class="chart-bar">
-          <span class="chart-label">Open</span>
-          <div class="chart-track"><div class="chart-fill" [style.width.%]="getPercent(stats.openProjects)"></div></div>
-          <span class="chart-value">{{ stats.openProjects }}</span>
-        </div>
-        <div class="chart-bar">
-          <span class="chart-label">In progress</span>
-          <div class="chart-track"><div class="chart-fill" [style.width.%]="getPercent(stats.inProgressProjects)"></div></div>
-          <span class="chart-value">{{ stats.inProgressProjects }}</span>
-        </div>
-        <div class="chart-bar">
-          <span class="chart-label">Completed</span>
-          <div class="chart-track"><div class="chart-fill" [style.width.%]="getPercent(stats.completedProjects)"></div></div>
-          <span class="chart-value">{{ stats.completedProjects }}</span>
-        </div>
-      </div>
+    <!-- ── Layout Grid ────────────────────────────────────────────────────── -->
+    <div class="layout-grid">
 
-      <div class="stats-extra">
-        <h6>Market budget average</h6>
-        <div class="budget-stats">
-          <div class="bstat">
-            <span class="bval">${{ stats.averageBudgetMin }}</span>
-            <span class="blabel">Avg min</span>
-          </div>
-          <div class="bstat">
-            <span class="bval">${{ stats.averageBudget }}</span>
-            <span class="blabel">Avg budget</span>
-          </div>
-          <div class="bstat">
-            <span class="bval">${{ stats.averageBudgetMax }}</span>
-            <span class="blabel">Avg max</span>
-          </div>
-        </div>
-      </div>
+      <!-- LEFT COLUMN -->
+      <div>
 
-      <div class="stats-extra" *ngIf="stats.topSkills?.length">
-        <h6>Most requested skills</h6>
-        <div class="tag-list">
-          <span class="tag skill" *ngFor="let s of stats.topSkills">{{ s }}</span>
-        </div>
-      </div>
-
-      <div class="stats-extra" *ngIf="stats.topCategories?.length">
-        <h6>Top categories</h6>
-        <div class="tag-list">
-          <span class="tag" *ngFor="let c of stats.topCategories">{{ c }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- My proposals -->
-    <div class="section-card" id="section-propositions">
-      <div class="section-header">
-        <h5>My proposals</h5>
-        <div class="header-actions">
-          <input type="text" class="search-input" placeholder="Search (message, budget...)"
-            [(ngModel)]="proposalSearchQuery" (input)="onProposalSearchInput()" />
-        </div>
-      </div>
-      <div *ngIf="proposalsLoading" class="loading">Loading...</div>
-      <div *ngIf="!proposalsLoading && filteredProposals.length === 0" class="empty-state">
-        No proposals yet. Browse the projects below and submit a proposal.
-      </div>
-      <div class="proposal-list" *ngIf="!proposalsLoading && filteredProposals.length > 0">
-        <div class="proposal-card" *ngFor="let p of filteredProposals">
-          <div class="proposal-row-top">
-            <div>
-              <div class="muted">Project: {{ getProjectTitle(p.projectId) }}</div>
+        <!-- ── Market Overview Chart ──────────────────────────────────── -->
+        <div class="section-card chart-card" *ngIf="stats">
+          <div class="card-head"><h5>Market Overview</h5></div>
+          <div class="static-chart">
+            <div class="chart-bar">
+              <span class="chart-label">Open</span>
+              <div class="chart-track">
+                <div class="chart-fill" [style.width.%]="getPercent(stats.openProjects)"></div>
+              </div>
+              <span class="chart-value">{{ stats.openProjects }}</span>
             </div>
-            <span class="pill"
-              [class.pending]="p.status === 'PENDING'"
-              [class.accepted]="p.status === 'ACCEPTED'"
-              [class.rejected]="p.status === 'REJECTED'"
-              [class.negotiating]="p.status === 'NEGOTIATING'">
-              {{ p.status === 'NEGOTIATING' ? 'NEGOTIATING' : p.status }}
-            </span>
+            <div class="chart-bar">
+              <span class="chart-label">In Progress</span>
+              <div class="chart-track">
+                <div class="chart-fill" [style.width.%]="getPercent(stats.inProgressProjects)"
+                     style="background:#10b981"></div>
+              </div>
+              <span class="chart-value">{{ stats.inProgressProjects }}</span>
+            </div>
+            <div class="chart-bar">
+              <span class="chart-label">Completed</span>
+              <div class="chart-track">
+                <div class="chart-fill" [style.width.%]="getPercent(stats.completedProjects)"
+                     style="background:#059669"></div>
+              </div>
+              <span class="chart-value">{{ stats.completedProjects }}</span>
+            </div>
           </div>
 
-          <div *ngIf="editingId !== p.id">
-            <div class="proposal-meta">
-              <span class="price">${{ p.proposedBudget }}</span>
-              <span class="muted">{{ p.estimatedDuration }}</span>
-              <span class="revisions-badge" *ngIf="p.revisionsOffered">
-                🔄 {{ p.revisionsOffered }} revision{{ p.revisionsOffered > 1 ? 's' : '' }}
+          <div class="stats-extra">
+            <h6>Market Budget Average</h6>
+            <div class="budget-stats">
+              <div class="bstat">
+                <span class="bval">${{ stats.averageBudgetMin }}</span>
+                <span class="blabel">Avg min</span>
+              </div>
+              <div class="bstat">
+                <span class="bval">${{ stats.averageBudget }}</span>
+                <span class="blabel">Avg budget</span>
+              </div>
+              <div class="bstat">
+                <span class="bval">${{ stats.averageBudgetMax }}</span>
+                <span class="blabel">Avg max</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-extra" *ngIf="stats.topSkills?.length">
+            <h6>Most Requested Skills</h6>
+            <div class="tag-list">
+              <span class="tag skill" *ngFor="let s of stats.topSkills">{{ s }}</span>
+            </div>
+          </div>
+
+          <div class="stats-extra" *ngIf="stats.topCategories?.length">
+            <h6>Top Categories</h6>
+            <div class="tag-list">
+              <span class="tag" *ngFor="let c of stats.topCategories">{{ c }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── My Proposals ───────────────────────────────────────────── -->
+        <div class="section-card" id="section-propositions">
+          <div class="section-header">
+            <h5>My Proposals</h5>
+            <div class="header-actions">
+              <input type="text" class="search-input"
+                     placeholder="Search proposals..."
+                     [(ngModel)]="proposalSearchQuery"
+                     (input)="onProposalSearchInput()" />
+            </div>
+          </div>
+
+          <div *ngIf="proposalsLoading" class="loading">Loading proposals...</div>
+          <div *ngIf="!proposalsLoading && filteredProposals.length === 0" class="empty-state">
+            No proposals yet. Browse the projects below and submit a proposal.
+          </div>
+
+          <div class="proposal-list" *ngIf="!proposalsLoading && filteredProposals.length > 0">
+            <div class="proposal-card" *ngFor="let p of filteredProposals">
+              <div class="proposal-row-top">
+                <div>
+                  <div class="muted">Project: {{ getProjectTitle(p.projectId) }}</div>
+                </div>
+                <span class="pill"
+                  [class.pending]="p.status === 'PENDING'"
+                  [class.accepted]="p.status === 'ACCEPTED'"
+                  [class.rejected]="p.status === 'REJECTED'"
+                  [class.negotiating]="p.status === 'NEGOTIATING'">
+                  {{ p.status }}
+                </span>
+              </div>
+
+              <!-- View mode -->
+              <div *ngIf="editingId !== p.id">
+                <div class="proposal-meta">
+                  <span class="price">${{ p.proposedBudget }}</span>
+                  <span class="muted">{{ p.estimatedDuration }}</span>
+                  <span class="revisions-badge" *ngIf="p.revisionsOffered">
+                    🔄 {{ p.revisionsOffered }} revision{{ p.revisionsOffered > 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <p class="cover-letter">{{ p.coverLetter }}</p>
+                <div class="muted small">
+                  Submitted {{ p.submittedAt | date: 'MMM d, yyyy · HH:mm' }}
+                </div>
+
+                <div class="proposal-actions" *ngIf="p.status === 'PENDING'">
+                  <button type="button" class="btn-edit" (click)="startEdit(p)">✏️ Edit</button>
+                  <button type="button" class="btn-delete" (click)="delete(p.id)">🗑️ Delete</button>
+                </div>
+
+                <!-- Counter-offer block -->
+                <div *ngIf="p.status === 'NEGOTIATING'" class="counter-offer-block">
+                  <div class="counter-offer-details">
+                    <strong>💰 Client Counter-offer</strong>
+                    <div class="counter-price">${{ p.counterOfferPrice || 0 }}</div>
+                    <div class="counter-message">
+                      💬 {{ p.counterOfferMessage || 'Counter-offer received' }}
+                    </div>
+                    <div class="counter-date" *ngIf="p.counterOfferAt">
+                      📅 Received {{ p.counterOfferAt | date: 'dd/MM/yyyy HH:mm' }}
+                    </div>
+                  </div>
+                  <div class="proposal-actions">
+                    <button type="button" class="btn-accept"
+                            (click)="acceptCounterOffer(p.id)">✔️ Accept</button>
+                    <button type="button" class="btn-reject"
+                            (click)="rejectCounterOffer(p.id)">❌ Reject</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Edit mode -->
+              <div class="inline-form" *ngIf="editingId === p.id">
+                <label class="field">
+                  <span>Proposed Budget</span>
+                  <input type="number" [(ngModel)]="editProposedBudget" />
+                </label>
+                <label class="field">
+                  <span>Delivery Time (days)</span>
+                  <input type="number" min="1" [(ngModel)]="editDeliveryDays" />
+                </label>
+                <label class="field">
+                  <span>Revisions Offered</span>
+                  <input type="number" min="0" max="10" [(ngModel)]="editRevisionsOffered" />
+                  <small class="hint">More revisions increase your proposal score</small>
+                </label>
+                <label class="field">
+                  <span>Cover Letter</span>
+                  <textarea rows="5" [(ngModel)]="editCoverLetter"></textarea>
+                </label>
+                <div class="edit-actions">
+                  <button type="button" class="btn-save"
+                          (click)="saveEdit()" [disabled]="saving">
+                    {{ saving ? 'Saving...' : 'Save' }}
+                  </button>
+                  <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Accepted Projects ───────────────────────────────────────── -->
+        <div class="section-card" id="section-accepted-projects">
+          <div class="section-header"><h5>Accepted Projects</h5></div>
+
+          <div *ngIf="acceptedProjectsLoading" class="loading">Loading...</div>
+          <div *ngIf="!acceptedProjectsLoading && acceptedProjects.length === 0" class="empty-state">
+            No accepted projects yet.
+          </div>
+
+          <div class="accepted-projects"
+               *ngIf="!acceptedProjectsLoading && acceptedProjects.length > 0">
+            <article class="accepted-project-card" *ngFor="let p of acceptedProjects">
+              <div class="top-row">
+                <div class="title">{{ p.title }}</div>
+                <span class="badge">✓ Accepted</span>
+              </div>
+              <div class="meta">
+                <span class="budget">${{ p.budgetMin }} – ${{ p.budgetMax }}</span>
+                <span class="muted">{{ p.category }}</span>
+                <span class="duration-badge">⏱ {{ p.duration }}</span>
+                <span class="status-pill">{{ p.status }}</span>
+              </div>
+              <div class="details-grid">
+                <div class="detail">
+                  <div class="k">Experience</div>
+                  <div class="v">{{ p.experienceLevel }}</div>
+                </div>
+                <div class="detail">
+                  <div class="k">Duration</div>
+                  <div class="v">{{ p.duration }}</div>
+                </div>
+                <div class="detail" *ngIf="p.deadline">
+                  <div class="k">Deadline</div>
+                  <div class="v">{{ p.deadline | date: 'MMM d, yyyy' }}</div>
+                </div>
+              </div>
+              <p class="desc">{{ p.description }}</p>
+              <div class="footer">
+                <div class="skills" *ngIf="p.skills?.length">
+                  <span class="tag" *ngFor="let s of p.skills?.slice(0, 4)">{{ s }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- ── Available Projects ─────────────────────────────────────── -->
+        <div class="section-card" id="section-projets">
+          <div class="section-header">
+            <h5>Available Projects</h5>
+            <div class="header-actions">
+              <input type="text" class="search-input"
+                     placeholder="Search by title, description, skills..."
+                     [(ngModel)]="searchQuery"
+                     (input)="onSearchInput()" />
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="filters-panel">
+            <div class="filter-row">
+              <label class="filter-field">
+                <span>Category</span>
+                <select [(ngModel)]="filterCategory" (change)="onFilterChange()">
+                  <option value="">All</option>
+                  <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+                </select>
+              </label>
+              <label class="filter-field">
+                <span>Experience</span>
+                <select [(ngModel)]="filterExperience" (change)="onFilterChange()">
+                  <option value="">All</option>
+                  <option *ngFor="let e of experienceOptions" [ngValue]="e.value">{{ e.label }}</option>
+                </select>
+              </label>
+              <label class="filter-field">
+                <span>Min Budget</span>
+                <input type="number" [(ngModel)]="filterBudgetMin"
+                       (input)="onFilterChange()" placeholder="0" />
+              </label>
+              <label class="filter-field">
+                <span>Max Budget</span>
+                <input type="number" [(ngModel)]="filterBudgetMax"
+                       (input)="onFilterChange()" placeholder="999999" />
+              </label>
+              <button type="button" class="btn-clear-filters" (click)="clearFilters()">Clear</button>
+            </div>
+          </div>
+
+          <!-- Proposal form with AI Cover Letter -->
+          <div class="inline-form" *ngIf="showProposalForm && selectedProject">
+            <div class="form-title-row">
+              <h4>Submit proposal for "{{ selectedProject.title }}"</h4>
+              <span class="ai-badge loading" *ngIf="aiCoverLoading">
+                🤖 Writing cover letter...
+              </span>
+              <span class="ai-badge success" *ngIf="aiCoverGenerated && !aiCoverLoading">
+                ✅ Generated by AI
               </span>
             </div>
-            <p class="cover-letter">{{ p.coverLetter }}</p>
-            <div class="muted small">Submitted on {{ p.submittedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
 
-            <div class="proposal-actions" *ngIf="p.status === 'PENDING'">
-              <button type="button" class="btn-edit" (click)="startEdit(p)">Edit</button>
-              <button type="button" class="btn-delete" (click)="delete(p.id)">Delete</button>
-            </div>
+            <label class="field">
+              <span>Your Skills & Experience
+                <small class="ai-hint">💡 Edit your skills to personalise the AI cover letter</small>
+              </span>
+              <input [(ngModel)]="freelancerSkills"
+                     placeholder="React, Node.js, 5 years experience..." />
+            </label>
 
-            <div *ngIf="p.status === 'NEGOTIATING'" class="counter-offer-block">
-              <div class="counter-offer-details">
-                <strong>💰 Client Counter‑offer :</strong>
-                <div class="counter-price">
-                  ${{ p.counterOfferPrice || 0 }}
-                </div>
-                <div class="counter-message">
-                  💬 {{ p.counterOfferMessage || 'Counter-offer received' }}
-                </div>
-                <div class="counter-date" *ngIf="p.counterOfferAt">
-                  📅 Received on {{ p.counterOfferAt | date: 'dd/MM/yyyy HH:mm' }}
-                </div>
-              </div>
-              <div class="proposal-actions">
-                <button type="button" class="btn-accept" (click)="acceptCounterOffer(p.id)">✔️ Accept</button>
-                <button type="button" class="btn-reject" (click)="rejectCounterOffer(p.id)">❌ Reject</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Edit mode -->
-          <div class="edit-form" *ngIf="editingId === p.id">
-            <label class="field">
-              <span>Proposed budget</span>
-              <input type="number" [(ngModel)]="editProposedBudget" />
-            </label>
-            <label class="field">
-              <span>Delivery time (days)</span>
-              <input type="number" min="1" [(ngModel)]="editDeliveryDays" />
-            </label>
-            <label class="field">
-              <span>Revisions offered</span>
-              <input type="number" min="0" max="10" [(ngModel)]="editRevisionsOffered" />
-              <small class="hint">More revisions increase your proposal score</small>
-            </label>
-            <label class="field">
-              <span>Cover letter</span>
-              <textarea rows="5" [(ngModel)]="editCoverLetter"></textarea>
-            </label>
-            <div class="edit-actions">
-              <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="saving">
-                {{ saving ? 'Saving...' : 'Save' }}
+            <div class="ai-regen-row">
+              <button type="button" class="btn-ai-regen"
+                      (click)="generateAICoverLetter()" [disabled]="aiCoverLoading">
+                {{ aiCoverLoading ? '🤖 Generating...' : '🤖 Regenerate Cover Letter' }}
               </button>
-              <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+            </div>
+
+            <label class="field">
+              <span>Cover Letter *
+                <span class="ai-filled-tag" *ngIf="aiCoverGenerated || propCoverLetter">🤖 AI</span>
+              </span>
+              <textarea rows="6" [(ngModel)]="propCoverLetter"
+                        placeholder="AI is generating your cover letter..."></textarea>
+            </label>
+
+            <div class="form-row">
+              <label class="field">
+                <span>Proposed Budget ($)</span>
+                <input type="number" [(ngModel)]="propBudget" />
+              </label>
+              <label class="field">
+                <span>Delivery Time (days)</span>
+                <input type="number" min="1" [(ngModel)]="propDeliveryDays" />
+              </label>
+              <label class="field">
+                <span>Revisions Offered</span>
+                <input type="number" min="0" max="10" [(ngModel)]="propRevisionsOffered" />
+                <small class="hint">More revisions improve your proposal score</small>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn-save"
+                      (click)="submitProposal()"
+                      [disabled]="submitting || !propCoverLetter.trim() || aiCoverLoading">
+                {{ submitting ? 'Submitting...' : '🚀 Submit Proposal' }}
+              </button>
+              <button type="button" class="btn-cancel" (click)="closeProposalForm()">Cancel</button>
+            </div>
+          </div>
+
+          <div *ngIf="loading" class="loading">Loading projects...</div>
+          <div *ngIf="!loading && filteredProjects.length === 0" class="empty-state">
+            <p *ngIf="searchQuery">No results for "{{ searchQuery }}".</p>
+            <p *ngIf="!searchQuery">No projects available at the moment.</p>
+          </div>
+
+          <div class="project-list" *ngIf="!loading && filteredProjects.length > 0">
+            <article class="project-card" *ngFor="let p of filteredProjects">
+              <div class="project-top">
+                <h3>{{ p.title }}</h3>
+                <div class="project-meta">
+                  <span class="budget">${{ p.budgetMin }} – ${{ p.budgetMax }}</span>
+                  <span class="duration-badge">⏱ {{ p.duration }}</span>
+                  <span class="pill">{{ p.status }}</span>
+                </div>
+              </div>
+              <p class="project-desc">{{ p.description }}</p>
+              <div class="project-skills">
+                <span class="tag" *ngFor="let s of p.skills?.slice(0, 5)">{{ s }}</span>
+              </div>
+              <div class="project-footer">
+                <span class="muted">Exp: {{ p.experienceLevel }}</span>
+                <span class="muted">Deadline: {{ p.deadline | date: 'MMM d, yyyy' }}</span>
+              </div>
+              <div class="project-actions">
+                <button type="button" class="btn-submit"
+                        (click)="openProposalForm(p)"
+                        [disabled]="alreadyProposed(p.id)">
+                  {{ alreadyProposed(p.id) ? '✅ Already Submitted' : '🚀 Submit Proposal' }}
+                </button>
+                <button type="button" class="btn-ranking"
+                        (click)="viewRankedProposals(p)">
+                  📊 View Ranking
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+      </div><!-- /left column -->
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <div class="section-card">
+          <div class="card-head"><h5>Quick Stats</h5></div>
+          <div style="display:flex;flex-direction:column;gap:.5rem">
+            <div style="display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--c-border);font-size:.85rem">
+              <span style="color:var(--c-muted)">Total proposals</span>
+              <strong>{{ totalProposals }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--c-border);font-size:.85rem">
+              <span style="color:var(--c-muted)">Accepted</span>
+              <strong style="color:#059669">{{ acceptedProposals }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--c-border);font-size:.85rem">
+              <span style="color:var(--c-muted)">Pending</span>
+              <strong style="color:#d97706">{{ pendingProposals }}</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:.55rem 0;font-size:.85rem" *ngIf="detailedStats">
+              <span style="color:var(--c-muted)">Acceptance rate</span>
+              <strong style="color:var(--c-accent)">
+                {{ (detailedStats.acceptanceRate * 100).toFixed(1) }}%
+              </strong>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Accepted projects -->
-    <div class="section-card" id="section-accepted-projects">
-      <div class="section-header"><h5>Accepted projects</h5></div>
-      <div *ngIf="acceptedProjectsLoading" class="loading">Loading...</div>
-      <div *ngIf="!acceptedProjectsLoading && acceptedProjects.length === 0" class="empty-state">
-        No accepted projects yet.
-      </div>
-      <div class="accepted-projects" *ngIf="!acceptedProjectsLoading && acceptedProjects.length > 0">
-        <article class="accepted-project-card" *ngFor="let p of acceptedProjects">
-          <div class="top-row">
-            <div class="title">{{ p.title }}</div>
-            <span class="badge">Accepted</span>
-          </div>
-          <div class="meta">
-            <span class="budget">${{ p.budgetMin }} - ${{ p.budgetMax }}</span>
-            <span class="muted">{{ p.category }}</span>
-            <span class="duration-badge">⏱️ {{ p.duration }}</span>
-            <span class="status-pill">{{ p.status }}</span>
-          </div>
-          <div class="details-grid">
-            <div class="detail"><div class="k">Experience</div><div class="v">{{ p.experienceLevel }}</div></div>
-            <div class="detail"><div class="k">Duration</div><div class="v">{{ p.duration }}</div></div>
-            <div class="detail" *ngIf="p.deadline"><div class="k">Deadline</div><div class="v">{{ p.deadline | date: 'yyyy-MM-dd' }}</div></div>
-          </div>
-          <p class="desc">{{ p.description }}</p>
-          <div class="footer">
-            <div class="skills" *ngIf="p.skills?.length">
-              <span class="tag" *ngFor="let s of p.skills?.slice(0, 4)">{{ s }}</span>
-            </div>
-          </div>
-        </article>
-      </div>
-    </div>
+    </div><!-- /layout-grid -->
+  </div><!-- /profile-body -->
+</div><!-- /profile-wrap -->
 
-    <!-- Available projects -->
-    <div class="section-card" id="section-projets">
-      <div class="section-header">
-        <h5>Available projects</h5>
-        <div class="header-actions">
-          <input type="text" class="search-input"
-            placeholder="Search (title, description, category, skills...)"
-            [(ngModel)]="searchQuery" (input)="onSearchInput()" />
-        </div>
-      </div>
-
-      <div class="filters-panel">
-        <div class="filter-row">
-          <label class="filter-field">
-            <span>Category</span>
-            <select [(ngModel)]="filterCategory" (change)="onFilterChange()">
-              <option value="">All</option>
-              <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
-            </select>
-          </label>
-          <label class="filter-field">
-            <span>Experience</span>
-            <select [(ngModel)]="filterExperience" (change)="onFilterChange()">
-              <option value="">All</option>
-              <option *ngFor="let e of experienceOptions" [ngValue]="e.value">{{ e.label }}</option>
-            </select>
-          </label>
-          <label class="filter-field">
-            <span>Min budget</span>
-            <input type="number" [(ngModel)]="filterBudgetMin" (input)="onFilterChange()" placeholder="0" />
-          </label>
-          <label class="filter-field">
-            <span>Max budget</span>
-            <input type="number" [(ngModel)]="filterBudgetMax" (input)="onFilterChange()" placeholder="999999" />
-          </label>
-          <button type="button" class="btn-clear-filters" (click)="clearFilters()">Clear filters</button>
-        </div>
-      </div>
-
-      <!-- Proposal form with AI Cover Letter -->
-      <div class="inline-form" *ngIf="showProposalForm && selectedProject">
-        <div class="form-title-row">
-          <h4>Submit a proposal for "{{ selectedProject.title }}"</h4>
-          <span class="ai-badge loading" *ngIf="aiCoverLoading">
-            🤖 AI is writing your cover letter...
-          </span>
-          <span class="ai-badge success" *ngIf="aiCoverGenerated && !aiCoverLoading">
-            ✅ Cover letter generated by AI
-          </span>
-        </div>
-
-        <label class="field full-width">
-          <span>Your skills & experience
-            <small class="ai-hint">💡 Edit your skills to personalize the AI-generated cover letter</small>
-          </span>
-          <input
-            [(ngModel)]="freelancerSkills"
-            placeholder="React, Node.js, 5 years experience..."
-          />
-        </label>
-
-        <div class="ai-regen-row">
-          <button
-            type="button"
-            class="btn-ai-regen"
-            (click)="generateAICoverLetter()"
-            [disabled]="aiCoverLoading">
-            {{ aiCoverLoading ? '🤖 Generating...' : '🤖 Regenerate cover letter' }}
-          </button>
-        </div>
-
-        <label class="field full-width">
-          <span>Cover letter *
-            <span class="ai-filled-tag" *ngIf="aiCoverGenerated || propCoverLetter">🤖 AI</span>
-          </span>
-          <textarea
-            rows="7"
-            [(ngModel)]="propCoverLetter"
-            placeholder="AI is generating your cover letter...">
-          </textarea>
-        </label>
-
-        <div class="form-row">
-          <label class="field">
-            <span>Proposed budget ($)</span>
-            <input type="number" [(ngModel)]="propBudget" />
-          </label>
-          <label class="field">
-            <span>Delivery time (days)</span>
-            <input type="number" min="1" [(ngModel)]="propDeliveryDays" />
-          </label>
-          <label class="field">
-            <span>Revisions offered</span>
-            <input type="number" min="0" max="10" [(ngModel)]="propRevisionsOffered" />
-            <small class="hint">More revisions increase your proposal score</small>
-          </label>
-        </div>
-
-        <div class="form-actions">
-          <button
-            type="button"
-            class="btn-save"
-            (click)="submitProposal()"
-            [disabled]="submitting || !propCoverLetter.trim() || aiCoverLoading">
-            {{ submitting ? 'Submitting...' : 'Submit proposal' }}
-          </button>
-          <button type="button" class="btn-cancel" (click)="closeProposalForm()">Cancel</button>
-        </div>
-      </div>
-
-      <div *ngIf="loading" class="loading">Loading...</div>
-      <div *ngIf="!loading && filteredProjects.length === 0" class="empty-state">
-        <p *ngIf="searchQuery">No results for "{{ searchQuery }}".</p>
-        <p *ngIf="!searchQuery">No projects available.</p>
-      </div>
-
-      <div class="project-list" *ngIf="!loading && filteredProjects.length > 0">
-        <article class="project-card" *ngFor="let p of filteredProjects">
-          <div class="project-top">
-            <h3>{{ p.title }}</h3>
-            <div class="project-meta">
-              <span class="budget">${{ p.budgetMin }} - ${{ p.budgetMax }}</span>
-              <span class="duration-badge">⏱️ {{ p.duration }}</span>
-              <span class="pill">{{ p.status }}</span>
-            </div>
-          </div>
-          <p class="project-desc">{{ p.description }}</p>
-          <div class="project-skills">
-            <span class="tag" *ngFor="let s of p.skills?.slice(0, 5)">{{ s }}</span>
-          </div>
-          <div class="project-footer">
-            <span class="muted">Exp: {{ p.experienceLevel }}</span>
-            <span class="muted">Deadline: {{ p.deadline | date: 'yyyy-MM-dd' }}</span>
-          </div>
-          <div class="project-actions">
-            <button
-              type="button"
-              class="btn-submit"
-              (click)="openProposalForm(p)"
-              [disabled]="alreadyProposed(p.id)">
-              {{ alreadyProposed(p.id) ? '✅ Already submitted' : '🚀 Submit proposal' }}
-            </button>
-            <button
-              type="button"
-              class="btn-ranking"
-              (click)="viewRankedProposals(p)">
-              📊 View ranking
-            </button>
-          </div>
-        </article>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Smart Ranking -->
+<!-- ══ MODAL: Smart Ranking ═════════════════════════════════════════════════ -->
 <div class="modal-overlay" *ngIf="showRankingModal" (click)="closeRankingModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
+  <div class="modal-content" (click)="$event.stopPropagation()"
+       style="max-width:680px">
     <div class="modal-header">
-      <h3>🏆 Proposals Ranking</h3>
-      <h4>{{ selectedProjectForRanking?.title }}</h4>
+      <div>
+        <h3>🏆 Proposals Ranking</h3>
+        <h4>{{ selectedProjectForRanking?.title }}</h4>
+      </div>
       <button class="modal-close" (click)="closeRankingModal()">✕</button>
     </div>
     <div class="modal-body">
       <div *ngIf="rankedProposals.length === 0" class="empty-state">
-        No proposals for this project
+        No proposals for this project.
       </div>
       <div class="ranked-list" *ngIf="rankedProposals.length > 0">
-        <div class="ranked-item" *ngFor="let ranked of rankedProposals; let i = index" 
-             [class.top-rank]="i === 0">
-          <div class="rank-number">
-            <span class="rank-badge" [class.gold]="i === 0" [class.silver]="i === 1" [class.bronze]="i === 2">
-              #{{ i + 1 }}
-            </span>
-            <span class="score">Score: {{ ranked.score | number:'1.0-0' }}</span>
-          </div>
-          <div class="proposal-details">
-            <div class="price">${{ ranked.proposal.proposedBudget }}</div>
-            <div class="delivery">{{ ranked.proposal.deliveryDays }} days</div>
-            <div class="revisions" *ngIf="ranked.proposal.revisionsOffered">
-              🔄 {{ ranked.proposal.revisionsOffered }} revision{{ ranked.proposal.revisionsOffered > 1 ? 's' : '' }}
+        <div class="ranked-item" *ngFor="let ranked of rankedProposals; let i = index">
+          <div style="flex:1">
+            <div class="rank-number">
+              <span class="rank-badge"
+                    [class.gold]="i === 0"
+                    [class.silver]="i === 1"
+                    [class.bronze]="i === 2">
+                #{{ i + 1 }}
+              </span>
+              <span class="score">Score: {{ ranked.score | number:'1.0-0' }}</span>
             </div>
-          </div>
-          <div class="score-breakdown">
-            <small>{{ ranked.scoreBreakdown }}</small>
+            <div class="proposal-details">
+              <span class="price">${{ ranked.proposal.proposedBudget }}</span>
+              <span class="delivery">{{ ranked.proposal.deliveryDays }} days</span>
+              <span class="revisions" *ngIf="ranked.proposal.revisionsOffered">
+                🔄 {{ ranked.proposal.revisionsOffered }}
+                revision{{ ranked.proposal.revisionsOffered > 1 ? 's' : '' }}
+              </span>
+            </div>
+            <div class="score-breakdown">{{ ranked.scoreBreakdown }}</div>
           </div>
         </div>
       </div>
