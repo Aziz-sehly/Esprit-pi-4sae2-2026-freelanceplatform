@@ -1,0 +1,38 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: message-service
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    url: ${MESSAGE_DB_URL:jdbc:mysql://localhost:3306/prolance_message?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MESSAGE_DB_USER:root}
+    password: ${MESSAGE_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+app:
+  upload-dir: ./uploads
+  user-service:
+    base-url: ${USER_SERVICE_BASE_URL:http://localhost:8084/api/users}
+  demo-user-ids: 1,2,3,4,5,6,7,8,9,10
+  censor:
+    enabled: true
+    replacement: "***"
+    banned-words:
+      - badword
+      - insult
+      - spam
+      - hate

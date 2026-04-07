@@ -1,30 +1,26 @@
 package com.example.microservice_contract.service;
 
-import com.resend.core.exception.ResendException;
-import com.resend.core.provider.impl.AuthenticationProviderStandard;
-import com.resend.services.emails.ResendEmails;
-import com.resend.services.emails.model.SendEmailRequest;
-import com.resend.services.emails.model.SendEmailResponse;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class EmailService {
 
-    private final ResendEmails resendEmails;
+    private final JavaMailSender mailSender;
 
     @Value("${app.base-url:http://localhost:8083}")
     private String baseUrl;
 
-    @Value("${resend.from-email:ProLance <onboarding@resend.dev>}")
+    @Value("${app.mail.from:ProLance <noreply@prolance.com>}")
     private String fromEmail;
-
-    public EmailService(@Value("${resend.api-key}") String apiKey) {
-        AuthenticationProviderStandard authProvider = new AuthenticationProviderStandard(apiKey);
-        this.resendEmails = new ResendEmails(authProvider);
-    }
 
     public void sendSigningInvitation(String toEmail,
                                       String recipientName,
@@ -37,37 +33,56 @@ public class EmailService {
                 baseUrl, contractId, token, signerRole
         );
 
+        String html = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto'>"
+                + "<h2 style='color:#4f46e5'>Hello " + recipientName + " 👋</h2>"
+                + "<p>A contract is awaiting your signature.</p>"
+                + "<p>"
+                + "<a href='" + signingLink + "' "
+                + "style='display:inline-block;padding:12px 24px;"
+                + "background:#4f46e5;color:white;border-radius:6px;"
+                + "text-decoration:none;font-weight:bold'>"
+                + "✍️ Sign Contract #" + contractId
+                + "</a>"
+                + "</p>"
+                + "<p style='color:#888;font-size:12px'>This link expires in 7 days.</p>"
+                + "</div>";
+
         send(toEmail,
                 "ProLance — Contract #" + contractId + " awaits your signature",
-                "<h2>Hello " + recipientName + "</h2>" +
-                        "<p>Click below to sign:</p>" +
-                        "<a href='" + signingLink + "'>Sign Contract</a>");
+                html);
     }
 
     public void sendContractActivatedEmail(String toEmail,
                                            String recipientName,
                                            Long contractId) {
 
+        String html = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:auto'>"
+                + "<h2 style='color:#16a34a'>Hello " + recipientName + " 🎉</h2>"
+                + "<p>Great news! Contract <strong>#" + contractId + "</strong> "
+                + "is now <span style='color:#16a34a;font-weight:bold'>ACTIVE</span>.</p>"
+                + "<p>Both parties have signed. You're good to go!</p>"
+                + "</div>";
+
         send(toEmail,
-                "Contract #" + contractId + " ACTIVE",
-                "<h2>Hello " + recipientName + "</h2>" +
-                        "<p>Your contract is now ACTIVE.</p>");
+                "✅ Contract #" + contractId + " is now ACTIVE",
+                html);
     }
 
     private void send(String toEmail, String subject, String html) {
         try {
-            SendEmailRequest request = SendEmailRequest.builder()
-                    .from(fromEmail)
-                    .to(toEmail)
-                    .subject(subject)
-                    .html(html)
-                    .build();
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            SendEmailResponse response = resendEmails.sendEmail(request);
-            log.info("Email sent: {}", response.getId());
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(html, true);
 
-        } catch (ResendException e) {
-            log.error("Email error: {}", e.getMessage());
+            mailSender.send(message);
+            log.info("✅ Email sent to {} | subject: {}", toEmail, subject);
+
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send email to {}: {}", toEmail, e.getMessage(), e);
         }
     }
 }

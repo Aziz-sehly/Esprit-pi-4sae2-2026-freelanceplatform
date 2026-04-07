@@ -1,6 +1,7 @@
 package com.example.microservice_service.controller;
 
 import com.example.microservice_service.entity.Shop;
+import com.example.microservice_service.Security.JwtUtil;
 import com.example.microservice_service.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,12 +15,20 @@ import java.util.List;
 public class ShopController {
 
     private final ShopService shopService;
+    private final JwtUtil jwtUtil;
 
+    // FREELANCER only
     @PostMapping
-    public ResponseEntity<Shop> createShop(@RequestBody Shop shop) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(shopService.createShop(shop));
+    public ResponseEntity<Shop> createShop(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Shop shop) {
+        String token = authHeader.substring(7);
+        Long userId = jwtUtil.extractUserId(token);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(shopService.createShop(userId, shop));
     }
 
+    // Anyone authenticated
     @GetMapping
     public ResponseEntity<List<Shop>> getAllShops() {
         return ResponseEntity.ok(shopService.getAllShops());
@@ -35,14 +44,25 @@ public class ShopController {
         return ResponseEntity.ok(shopService.getShopByFreelancerId(freelancerId));
     }
 
+    // FREELANCER only (own shop)
     @PutMapping("/{id}")
-    public ResponseEntity<Shop> updateShop(@PathVariable Long id, @RequestBody Shop shop) {
-        return ResponseEntity.ok(shopService.updateShop(id, shop));
+    public ResponseEntity<Shop> updateShop(
+            @PathVariable Long id,
+            @RequestBody Shop shop,
+            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.substring(7);
+        Long userId = jwtUtil.extractUserId(token);
+        return ResponseEntity.ok(shopService.updateShop(id, shop, userId));
     }
 
+    // FREELANCER only (own shop)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteShop(@PathVariable Long id) {
-        shopService.deleteShop(id);
+    public ResponseEntity<Void> deleteShop(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        String token = authHeader.substring(7);
+        Long userId = jwtUtil.extractUserId(token);
+        shopService.deleteShop(id, userId);
         return ResponseEntity.noContent().build();
     }
 }

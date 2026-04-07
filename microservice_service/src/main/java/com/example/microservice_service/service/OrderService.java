@@ -1,5 +1,7 @@
 package com.example.microservice_service.service;
 
+import com.example.microservice_service.client.UserClient;
+import com.example.microservice_service.dto.UserResponse;
 import com.example.microservice_service.entity.FreelancerService;
 import com.example.microservice_service.entity.Order;
 import com.example.microservice_service.entity.enums.OrderStatus;
@@ -15,12 +17,34 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final FreelancerServiceService freelancerServiceService;
+    private final UserClient userClient;
 
-    public Order createOrder(Order order) {
-        FreelancerService service = freelancerServiceService.getServiceById(order.getService().getId());
-        order.setService(service);
+    public Order createOrder(Long buyerId, Long serviceId, String selectedAddOns, java.math.BigDecimal totalPrice) {
+        // Validate buyer exists and is active (both CLIENT and FREELANCER can order)
+        UserResponse buyer = userClient.getUserById(buyerId);
+        if (!buyer.isVerified()) {
+            throw new IllegalStateException("User must be verified to place an order.");
+        }
+        if (!buyer.isActive()) {
+            throw new IllegalStateException("User account is disabled.");
+        }
+
+        FreelancerService service = freelancerServiceService.getServiceById(serviceId);
+
+        // Cannot order your own service
+        if (service.getShop().getFreelancerId().equals(buyerId)) {
+            throw new IllegalStateException("You cannot order your own service.");
+        }
+
+        Order order = new Order();
+        order.setBuyerId(buyerId);
         order.setSellerId(service.getShop().getFreelancerId());
+        order.setService(service);
+        order.setSelectedAddOns(selectedAddOns);
+        order.setTotalPrice(totalPrice);
         order.setStatus(OrderStatus.PENDING_REQUIREMENTS);
+        order.setRevisionsUsed(0);
+
         return orderRepository.save(order);
     }
 
@@ -41,23 +65,26 @@ public class OrderService {
         return orderRepository.findByServiceId(serviceId);
     }
 
-    // Buyer submits requirements — order clock starts here
-    public Order submitRequirements(Long orderId, String requirementsAnswer) {
+    public Order submitRequirements(Long orderId, String requirementsAnswer, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getBuyerId().equals(requesterId)) {
+            throw new IllegalStateException("Only the buyer can submit requirements.");
+        }
         if (order.getStatus() != OrderStatus.PENDING_REQUIREMENTS) {
-            throw new IllegalStateException("Requirements already submitted for this order.");
+            throw new IllegalStateException("Requirements already submitted.");
         }
         order.setBuyerRequirementsAnswer(requirementsAnswer);
         order.setStatus(OrderStatus.IN_PROGRESS);
-        // Set deadline from now based on service delivery days
         int deliveryDays = order.getService().getDeliveryDays();
         order.setDeadline(LocalDateTime.now().plusDays(deliveryDays));
         return orderRepository.save(order);
     }
 
-    // Freelancer delivers the order
-    public Order deliverOrder(Long orderId, String deliveryMessage, String deliveryFileUrls) {
+    public Order deliverOrder(Long orderId, String deliveryMessage, String deliveryFileUrls, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getSellerId().equals(requesterId)) {
+            throw new IllegalStateException("Only the seller can deliver the order.");
+        }
         if (order.getStatus() != OrderStatus.IN_PROGRESS && order.getStatus() != OrderStatus.REVISION_REQUESTED) {
             throw new IllegalStateException("Order is not in a deliverable state.");
         }
@@ -67,15 +94,16 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Buyer requests a revision
-    public Order requestRevision(Long orderId, String revisionNotes) {
+    public Order requestRevision(Long orderId, String revisionNotes, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getBuyerId().equals(requesterId)) {
+            throw new IllegalStateException("Only the buyer can request a revision.");
+        }
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalStateException("Can only request revision on a delivered order.");
         }
-        int allowedRevisions = order.getService().getRevisionCount();
-        if (order.getRevisionsUsed() >= allowedRevisions) {
-            throw new IllegalStateException("Maximum revisions reached for this order.");
+        if (order.getRevisionsUsed() >= order.getService().getRevisionCount()) {
+            throw new IllegalStateException("Maximum revisions reached.");
         }
         order.setRevisionNotes(revisionNotes);
         order.setRevisionsUsed(order.getRevisionsUsed() + 1);
@@ -83,9 +111,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Buyer accepts the delivery — order completes
-    public Order completeOrder(Long orderId) {
+    public Order completeOrder(Long orderId, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getBuyerId().equals(requesterId)) {
+            throw new IllegalStateException("Only the buyer can complete the order.");
+        }
         if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new IllegalStateException("Can only complete a delivered order.");
         }
@@ -94,9 +124,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Cancel order
-    public Order cancelOrder(Long orderId) {
+    public Order cancelOrder(Long orderId, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getBuyerId().equals(requesterId) && !order.getSellerId().equals(requesterId)) {
+            throw new IllegalStateException("Only buyer or seller can cancel the order.");
+        }
         if (order.getStatus() == OrderStatus.COMPLETED) {
             throw new IllegalStateException("Cannot cancel a completed order.");
         }
@@ -104,9 +136,11 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // Raise a dispute
-    public Order disputeOrder(Long orderId) {
+    public Order disputeOrder(Long orderId, Long requesterId) {
         Order order = getOrderById(orderId);
+        if (!order.getBuyerId().equals(requesterId) && !order.getSellerId().equals(requesterId)) {
+            throw new IllegalStateException("Only buyer or seller can dispute the order.");
+        }
         if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new IllegalStateException("Cannot dispute a completed or cancelled order.");
         }

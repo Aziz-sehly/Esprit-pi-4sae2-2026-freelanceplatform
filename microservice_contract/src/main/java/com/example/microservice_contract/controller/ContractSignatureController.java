@@ -4,8 +4,8 @@ import com.example.microservice_contract.dto.ContractSignatureDto;
 import com.example.microservice_contract.service.IContractSignatureService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,11 +18,8 @@ public class ContractSignatureController {
 
     private final IContractSignatureService signatureService;
 
-    /**
-     * POST /api/contracts/{contractId}/signatures
-     * Initiate a signature request — creates a token and returns it.
-     * You would then send the token to the signer via email/notification.
-     */
+    // Only ADMIN or internal calls initiate signatures manually
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     public ResponseEntity<ContractSignatureDto.Response> initiateSignature(
             @PathVariable Long contractId,
@@ -31,10 +28,7 @@ public class ContractSignatureController {
                 .body(signatureService.initiateSignature(contractId, request));
     }
 
-    /**
-     * POST /api/contracts/{contractId}/signatures/sign
-     * Submit the actual signature image using the signing token.
-     */
+    // Public — the signer arrives from email link with a token, no JWT required
     @PostMapping("/sign")
     public ResponseEntity<ContractSignatureDto.Response> submitSignature(
             @PathVariable Long contractId,
@@ -42,6 +36,7 @@ public class ContractSignatureController {
         return ResponseEntity.ok(signatureService.submitSignature(request));
     }
 
+    // Both parties can view signatures on their contract
     @GetMapping
     public ResponseEntity<List<ContractSignatureDto.Response>> getSignatures(
             @PathVariable Long contractId) {

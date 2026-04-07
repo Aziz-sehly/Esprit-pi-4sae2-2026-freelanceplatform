@@ -5,6 +5,8 @@ import com.example.microservice_contract.dto.ContractExtensionDto;
 import com.example.microservice_contract.dto.ContractSignatureDto;
 import com.example.microservice_contract.entity.Contract;
 import com.example.microservice_contract.Enum.ContractStatus;
+import com.example.microservice_contract.feign.ProposalClient;
+import com.example.microservice_contract.feign.UserClient;
 import com.example.microservice_contract.repository.IContractRepository;
 import com.example.microservice_contract.service.IContractService;
 import com.example.microservice_contract.service.IContractSignatureService;
@@ -22,25 +24,59 @@ import java.util.stream.Collectors;
 @Transactional
 public class ContractServiceImpl implements IContractService {
 
-    private final IContractRepository contractRepository;
+    private final IContractRepository      contractRepository;
     private final IContractSignatureService signatureService;
+    private final ProposalClient           proposalClient;
+    private final UserClient               userClient;
 
     public ContractServiceImpl(IContractRepository contractRepository,
-                               @Lazy IContractSignatureService signatureService) {
+                               @Lazy IContractSignatureService signatureService,
+                               ProposalClient proposalClient,
+                               UserClient userClient) {
         this.contractRepository = contractRepository;
         this.signatureService   = signatureService;
+        this.proposalClient     = proposalClient;
+        this.userClient         = userClient;
     }
 
-
-    // ContractServiceImpl
-    @Override
-    @Transactional(readOnly = true)
-    public List<ContractDto.Response> getAllContracts() {
-        return contractRepository.findAll()
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
     @Override
     public ContractDto.Response createContract(ContractDto.CreateRequest request) {
+
+        // ── Auto-enrich with real emails/names from user microservice ─────────
+        // If the caller already provided emails (e.g. from proposal service
+        // in testing mode), we keep them. Otherwise we fetch from user service.
+        String clientEmail     = request.getClientEmail();
+        String clientName      = request.getClientName();
+        String freelancerEmail = request.getFreelancerEmail();
+        String freelancerName  = request.getFreelancerName();
+
+        if (clientEmail == null || clientEmail.isBlank()) {
+            try {
+                UserClient.UserData client = userClient.getUserById(request.getClientId());
+                clientEmail = client.getEmail();
+                clientName  = client.getFullName();
+                log.info("Fetched client email from user service: {}", clientEmail);
+            } catch (Exception e) {
+                log.warn("Could not fetch client from user service: {}", e.getMessage());
+                clientEmail = "client" + request.getClientId() + "@prolance.com";
+                clientName  = "Client " + request.getClientId();
+            }
+        }
+
+        if (freelancerEmail == null || freelancerEmail.isBlank()) {
+            try {
+                UserClient.UserData freelancer = userClient.getUserById(request.getFreelancerId());
+                freelancerEmail = freelancer.getEmail();
+                freelancerName  = freelancer.getFullName();
+                log.info("Fetched freelancer email from user service: {}", freelancerEmail);
+            } catch (Exception e) {
+                log.warn("Could not fetch freelancer from user service: {}", e.getMessage());
+                freelancerEmail = "freelancer" + request.getFreelancerId() + "@prolance.com";
+                freelancerName  = "Freelancer " + request.getFreelancerId();
+            }
+        }
+
+        // ── Build and save contract ───────────────────────────────────────────
         Contract contract = Contract.builder()
                 .projectId(request.getProjectId())
                 .proposalId(request.getProposalId())
@@ -55,93 +91,86 @@ public class ContractServiceImpl implements IContractService {
                 .build();
 
         Contract saved = contractRepository.save(contract);
+        log.info("Contract {} saved, initiating signatures", saved.getId());
 
-        // Initiate signatures - this now handles email asynchronously
-        initiateSignaturesForBothParties(saved, request);
+        // ── Initiate signatures with resolved emails ──────────────────────────
+        initiateSignatures(saved, request.getClientId(), clientEmail, clientName,
+                request.getFreelancerId(), freelancerEmail, freelancerName);
 
         return toResponse(saved);
     }
 
-    private void initiateSignaturesForBothParties(Contract contract,
-                                                  ContractDto.CreateRequest request) {
-        // Send to client
-        signatureService.initiateSignature(
-                contract.getId(),
+    private void initiateSignatures(Contract contract,
+                                    Long clientId,    String clientEmail,    String clientName,
+                                    Long freelancerId, String freelancerEmail, String freelancerName) {
+        signatureService.initiateSignature(contract.getId(),
                 ContractSignatureDto.CreateRequest.builder()
-                        .signerId(request.getClientId())
+                        .signerId(clientId)
                         .signerRole("CLIENT")
-                        .signerEmail(request.getClientEmail())
-                        .signerName(request.getClientName())
-                        .build()
-        );
+                        .signerEmail(clientEmail)
+                        .signerName(clientName)
+                        .build());
 
-        // Send to freelancer
-        signatureService.initiateSignature(
-                contract.getId(),
+        signatureService.initiateSignature(contract.getId(),
                 ContractSignatureDto.CreateRequest.builder()
-                        .signerId(request.getFreelancerId())
+                        .signerId(freelancerId)
                         .signerRole("FREELANCER")
-                        .signerEmail(request.getFreelancerEmail())
-                        .signerName(request.getFreelancerName())
-                        .build()
-        );
+                        .signerEmail(freelancerEmail)
+                        .signerName(freelancerName)
+                        .build());
     }
 
-    @Override
-    @Transactional(readOnly = true)
+    // ── Read methods ──────────────────────────────────────────────────────────
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getAllContracts() {
+        return contractRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
     public ContractDto.Response getContractById(Long id) {
         return toResponse(findOrThrow(id));
     }
 
-    @Override
-    @Transactional(readOnly = true)
+    @Override @Transactional(readOnly = true)
     public ContractDto.Response getContractByProposalId(Long proposalId) {
-        Contract contract = contractRepository.findByProposalId(proposalId)
+        return toResponse(contractRepository.findByProposalId(proposalId)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Contract not found for proposal: " + proposalId));
-        return toResponse(contract);
+                        "Contract not found for proposal: " + proposalId)));
     }
 
-    @Override
-    @Transactional(readOnly = true)
+    @Override @Transactional(readOnly = true)
     public List<ContractDto.Response> getContractsByClient(Long clientId) {
-        return contractRepository.findByClientId(clientId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+        return contractRepository.findByClientId(clientId).stream()
+                .map(this::toResponse).collect(Collectors.toList());
     }
 
-    @Override
-    @Transactional(readOnly = true)
+    @Override @Transactional(readOnly = true)
     public List<ContractDto.Response> getContractsByFreelancer(Long freelancerId) {
-        return contractRepository.findByFreelancerId(freelancerId)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+        return contractRepository.findByFreelancerId(freelancerId).stream()
+                .map(this::toResponse).collect(Collectors.toList());
     }
 
-    @Override
-    @Transactional(readOnly = true)
+    @Override @Transactional(readOnly = true)
     public List<ContractDto.Response> getContractsByStatus(ContractStatus status) {
-        return contractRepository.findByStatus(status)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+        return contractRepository.findByStatus(status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByClientAndStatus(Long clientId, ContractStatus status) {
+        return contractRepository.findByClientIdAndStatus(clientId, status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByFreelancerAndStatus(Long freelancerId, ContractStatus status) {
+        return contractRepository.findByFreelancerIdAndStatus(freelancerId, status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<ContractDto.Response> getContractsByClientAndStatus(Long clientId,
-                                                                    ContractStatus status) {
-        return contractRepository.findByClientIdAndStatus(clientId, status)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ContractDto.Response> getContractsByFreelancerAndStatus(Long freelancerId,
-                                                                        ContractStatus status) {
-        return contractRepository.findByFreelancerIdAndStatus(freelancerId, status)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    @Override
-    public ContractDto.Response updateContractStatus(Long id,
-                                                     ContractDto.UpdateStatusRequest request) {
+    public ContractDto.Response updateContractStatus(Long id, ContractDto.UpdateStatusRequest request) {
         Contract contract = findOrThrow(id);
         contract.setStatus(request.getStatus());
         return toResponse(contractRepository.save(contract));
@@ -159,11 +188,9 @@ public class ContractServiceImpl implements IContractService {
     }
 
     private ContractDto.Response toResponse(Contract c) {
-
         List<ContractExtensionDto.Response> extensions = c.getExtensions().stream()
                 .map(e -> ContractExtensionDto.Response.builder()
-                        .id(e.getId())
-                        .contractId(c.getId())
+                        .id(e.getId()).contractId(c.getId())
                         .additionalDays(e.getAdditionalDays())
                         .extensionType(e.getExtensionType())
                         .requestingParty(e.getRequestingParty())
@@ -180,8 +207,7 @@ public class ContractServiceImpl implements IContractService {
 
         List<ContractSignatureDto.Response> signatures = c.getSignatures().stream()
                 .map(s -> ContractSignatureDto.Response.builder()
-                        .id(s.getId())
-                        .contractId(c.getId())
+                        .id(s.getId()).contractId(c.getId())
                         .signerId(s.getSignerId())
                         .signerRole(s.getSignerRole())
                         .signerEmail(s.getSignerEmail())
@@ -197,8 +223,7 @@ public class ContractServiceImpl implements IContractService {
                 .collect(Collectors.toList());
 
         return ContractDto.Response.builder()
-                .id(c.getId())
-                .projectId(c.getProjectId())
+                .id(c.getId()).projectId(c.getProjectId())
                 .proposalId(c.getProposalId())
                 .freelancerId(c.getFreelancerId())
                 .clientId(c.getClientId())
