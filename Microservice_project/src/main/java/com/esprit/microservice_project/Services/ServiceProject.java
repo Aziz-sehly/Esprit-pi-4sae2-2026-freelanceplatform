@@ -7,6 +7,7 @@ import com.esprit.microservice_project.Entity.Status;
 import com.esprit.microservice_project.Repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Service
@@ -40,17 +41,15 @@ public class ServiceProject implements IServiceProject {
         existingProject.setStatus(newProject.getStatus());
         existingProject.setDeadline(newProject.getDeadline());
 
-        // ← ADD
+        // Only update clientEmail if provided
         if (newProject.getClientEmail() != null) {
             existingProject.setClientEmail(newProject.getClientEmail());
         }
-
-        if (newProject.getClient() != null) {
-            existingProject.setClient(newProject.getClient());
-        }
+        // clientId never changes after creation — do not update it
 
         return projectRepository.save(existingProject);
     }
+
     @Override
     public List<Project> getProjects() {
         return projectRepository.findAll();
@@ -58,7 +57,8 @@ public class ServiceProject implements IServiceProject {
 
     @Override
     public Project getProject(int id) {
-        return projectRepository.findById(id).get();
+        return projectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + id));
     }
 
     @Override
@@ -69,7 +69,8 @@ public class ServiceProject implements IServiceProject {
 
     @Override
     public List<Project> getProjectsByClientId(int clientId) {
-        return projectRepository.findByClient_id(clientId);
+        // ✅ use updated repository method
+        return projectRepository.findByClientId((long) clientId);
     }
 
     @Override
@@ -85,6 +86,7 @@ public class ServiceProject implements IServiceProject {
                 budgetMax
         );
     }
+
     @Override
     public List<Project> filter(String category, Status status, Experience experience,
                                 Float budgetMin, Float budgetMax) {
@@ -96,7 +98,6 @@ public class ServiceProject implements IServiceProject {
                 budgetMax
         );
     }
-
 
     @Override
     public ProjectStatsDTO getClientStats(int clientId) {
@@ -110,6 +111,11 @@ public class ServiceProject implements IServiceProject {
         return buildStats(projects);
     }
 
+    @Override
+    public Project getProjectById(int id) {
+        return projectRepository.findById(id).orElse(null);
+    }
+
     private ProjectStatsDTO buildStats(List<Project> projects) {
         ProjectStatsDTO dto = new ProjectStatsDTO();
 
@@ -120,7 +126,6 @@ public class ServiceProject implements IServiceProject {
         dto.setCancelledProjects( projects.stream().filter(p -> p.getStatus() == Status.CANCELLED).count());
         dto.setArchivedProjects(  projects.stream().filter(p -> p.getStatus() == Status.DRAFT).count());
 
-        // Budgets
         double avgMin = projects.stream()
                 .mapToDouble(p -> p.getBudget_min() != null ? p.getBudget_min() : 0)
                 .average().orElse(0);
@@ -133,7 +138,6 @@ public class ServiceProject implements IServiceProject {
         dto.setTotalBudgetMax(  projects.stream()
                 .mapToDouble(p -> p.getBudget_max() != null ? p.getBudget_max() : 0).sum());
 
-        // Top catégories
         List<String> topCategories = projects.stream()
                 .filter(p -> p.getCategory() != null)
                 .collect(java.util.stream.Collectors.groupingBy(
@@ -145,7 +149,6 @@ public class ServiceProject implements IServiceProject {
                 .collect(java.util.stream.Collectors.toList());
         dto.setTopCategories(topCategories);
 
-        // Top skills
         List<String> topSkills = projects.stream()
                 .filter(p -> p.getSkills() != null && !p.getSkills().isBlank())
                 .flatMap(p -> java.util.Arrays.stream(p.getSkills().split(",")))
@@ -160,7 +163,6 @@ public class ServiceProject implements IServiceProject {
                 .collect(java.util.stream.Collectors.toList());
         dto.setTopSkills(topSkills);
 
-        // Projets populaires (simulé par budget décroissant — remplacer par proposalsCount si dispo)
         List<ProjectStatsDTO.PopularProject> popular = projects.stream()
                 .sorted((a, b) -> Float.compare(
                         b.getBudget_max() != null ? b.getBudget_max() : 0,
@@ -180,12 +182,4 @@ public class ServiceProject implements IServiceProject {
 
         return dto;
     }
-
-    // ADD après la méthode getFreelancerStats()
-
-    @Override
-    public Project getProjectById(int id) {
-        return projectRepository.findById(id).orElse(null);
-    }
-
 }

@@ -1,16 +1,18 @@
 package com.esprit.microservice_project.Repository;
 
-import com.esprit.microservice_project.Entity.Project;
-import org.springframework.data.jpa.repository.JpaRepository;
 import com.esprit.microservice_project.Entity.Experience;
+import com.esprit.microservice_project.Entity.Project;
 import com.esprit.microservice_project.Entity.Status;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface ProjectRepository extends JpaRepository<Project, Integer> {
-    List<Project> findByClient_id(int clientId);
+
+    // ✅ clientId is now a plain Long field, no more client_id navigation
+    List<Project> findByClientId(Long clientId);
 
     @Query("""
     SELECT p FROM Project p
@@ -33,6 +35,7 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
             @Param("budgetMin")  Float      budgetMin,
             @Param("budgetMax")  Float      budgetMax
     );
+
     @Query("""
     SELECT p FROM Project p
     WHERE (:category   IS NULL OR p.category        = :category)
