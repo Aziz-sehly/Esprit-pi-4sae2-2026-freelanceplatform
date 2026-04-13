@@ -1,12 +1,14 @@
 package com.esprit.microservice_proposal.DTO;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
-    private int id;
+    private Long id;
     private String email;
     private String name;      // kept for contract compatibility
     private String role;
@@ -25,7 +27,7 @@ public class User {
     }
 
     // Constructor used by getUserSafe fallback
-    public User(int id, String name, String email, String role) {
+    public User(Long id, String name, String email, String role) {
         this.id = id;
         this.name = name;
         this.email = email;

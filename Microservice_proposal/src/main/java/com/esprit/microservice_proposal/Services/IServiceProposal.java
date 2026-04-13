@@ -30,6 +30,7 @@ public interface IServiceProposal {
 
     // Smart Ranking
     List<RankedProposalDTO> getRankedProposals(int projectId);
+    Proposal rejectProposal(int proposalId, int clientId);
 
     // Counter-Offer
     Proposal makeCounterOffer(int proposalId, CounterOfferRequest req);

@@ -1,7 +1,9 @@
 package com.example.microservice_service.entity;
 
 import com.example.microservice_service.entity.enums.ServiceStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -21,10 +23,8 @@ public class FreelancerService {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Use @JsonIgnoreProperties instead of @JsonIgnore on @ManyToOne
-    // This breaks the cycle without confusing Hibernate 7
     @JsonIgnoreProperties({"services", "hibernateLazyInitializer", "handler"})
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)   // EAGER fixes shop_id null on new transient entity
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
 
@@ -45,7 +45,8 @@ public class FreelancerService {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @Column(nullable = false)
+    @JsonProperty("deliveryDays")
+    @Column(name = "delivery_days", nullable = false)
     private Integer deliveryDays;
 
     @Column(nullable = false)
@@ -69,8 +70,7 @@ public class FreelancerService {
 
     private LocalDateTime updatedAt;
 
-    // @JsonIgnore on @OneToMany is safe — no Hibernate conflict
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     @OneToMany(mappedBy = "service", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ServiceAddOn> addOns;
 
@@ -79,6 +79,16 @@ public class FreelancerService {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = ServiceStatus.DRAFT;
+        // Auto-generate slug from title + timestamp to guarantee uniqueness
+        if (slug == null || slug.isBlank()) {
+            String base = title == null ? "service" : title.toLowerCase()
+                    .replaceAll("[^a-z0-9\\s-]", "")
+                    .replaceAll("\\s+", "-")
+                    .replaceAll("-+", "-")
+                    .trim();
+            if (base.isBlank()) base = "service";
+            slug = base + "-" + System.currentTimeMillis();
+        }
     }
 
     @PreUpdate

@@ -28,15 +28,12 @@ public class ContractSignature {
     @Column(name = "signer_id", nullable = false)
     private Long signerId;
 
-    // CLIENT or FREELANCER
     @Column(name = "signer_role", nullable = false)
     private String signerRole;
 
-    // Email used to send the signing link
     @Column(name = "signer_email", nullable = false)
     private String signerEmail;
 
-    // Display name used in email greeting
     @Column(name = "signer_name", nullable = false)
     private String signerName;
 
@@ -45,13 +42,23 @@ public class ContractSignature {
     @Builder.Default
     private SignatureStatus status = SignatureStatus.PENDING;
 
-    // Unique token embedded in the signing link
     @Column(name = "token", unique = true, nullable = false)
     private String token;
 
-    // Base64-encoded PNG drawn by the signer
     @Column(name = "signature_data", columnDefinition = "LONGTEXT")
     private String signatureData;
+
+    @Column(name = "crypto_payload", columnDefinition = "TEXT")
+    private String cryptoPayload;
+
+    @Column(name = "crypto_signature", columnDefinition = "TEXT")
+    private String cryptoSignature;
+
+    @Column(name = "crypto_public_key", columnDefinition = "TEXT")
+    private String cryptoPublicKey;
+
+    @Column(name = "key_fingerprint", length = 64)
+    private String keyFingerprint;
 
     @Column(name = "ip_address")
     private String ipAddress;
@@ -59,14 +66,23 @@ public class ContractSignature {
     @Column(name = "signed_at")
     private LocalDateTime signedAt;
 
-    // Token expiry — default 7 days from creation
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
-    // ADD THIS FIELD - matches the database column
     @Column(nullable = false)
     @Builder.Default
     private boolean signed = false;
+
+    @Column(name = "signed_by_user_id")
+    private Long signedByUserId;
+
+    /**
+     * Human-readable 12-digit numeric signature code.
+     * Generated deterministically at signing time from contractId + signerId + signedAt.
+     * Uniquely identifies this signing event for legal correspondence and audit trails.
+     */
+    @Column(name = "numeric_signature", length = 20)
+    private Long numericSignature;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

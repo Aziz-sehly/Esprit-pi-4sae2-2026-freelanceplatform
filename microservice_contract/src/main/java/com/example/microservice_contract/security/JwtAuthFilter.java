@@ -16,7 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
-@Component
+
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -27,6 +27,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+
+        System.out.println(">>> FILTER HIT: " + request.getRequestURI()
+                + " | Auth: " + request.getHeader("Authorization"));
 
         String authHeader = request.getHeader("Authorization");
 
@@ -39,23 +42,40 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             Claims claims = jwtUtil.extractAllClaims(token);
 
-            request.setAttribute("userId", claims.get("userId", Long.class));
-            request.setAttribute("role",   claims.get("role", String.class));
-            request.setAttribute("email",  claims.getSubject());
+            Object rawId = claims.get("userId");
+            Long userId = rawId instanceof Integer
+                    ? ((Integer) rawId).longValue()
+                    : rawId instanceof Long
+                    ? (Long) rawId
+                    : null;
 
-            SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(
-                            claims.getSubject(),
-                            null,
-                            List.of(new SimpleGrantedAuthority(claims.get("role", String.class)))
-                    )
-            );
+            request.setAttribute("userId", userId);
+            request.setAttribute("role", claims.get("role", String.class));
+            request.setAttribute("email", claims.getSubject());
+
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                SecurityContextHolder.getContext().setAuthentication(
+                        new UsernamePasswordAuthenticationToken(
+                                claims.getSubject(),
+                                null,
+                                List.of(new SimpleGrantedAuthority(
+                                        claims.get("role", String.class)))
+                        )
+                );
+            }
+
+            filterChain.doFilter(request, response);
+
         } catch (JwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Invalid or expired token");
-            return;
         }
+    }
 
-        filterChain.doFilter(request, response);
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        System.out.println(">>> shouldNotFilter: " + path);
+        return false;
     }
 }

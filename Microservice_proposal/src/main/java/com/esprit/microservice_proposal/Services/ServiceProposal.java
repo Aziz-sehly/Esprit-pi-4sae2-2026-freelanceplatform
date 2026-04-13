@@ -36,7 +36,7 @@ public class ServiceProposal implements IServiceProposal {
     private int expirationDays;
 
     // ── TESTING FLAG ──────────────────────────────────────────────────────────
-    private static final boolean TESTING_MODE = true;
+    private static final boolean TESTING_MODE = false;
     private static final String  TEST_EMAIL   = "ffaresjebali@gmail.com";
 
     // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -72,6 +72,14 @@ public class ServiceProposal implements IServiceProposal {
     @Override
     public List<Proposal> getProposals() {
         return proposalRepository.findAll();
+    }
+    @Override
+    @Transactional
+    public Proposal rejectProposal(int proposalId, int clientId) {
+        Proposal proposal = proposalRepository.findById(proposalId)
+                .orElseThrow(() -> new RuntimeException("Proposal not found"));
+        proposal.setStatus(ProposalStatus.REJECTED);
+        return proposalRepository.save(proposal);
     }
 
     @Override
@@ -140,13 +148,7 @@ public class ServiceProposal implements IServiceProposal {
             User freelancer = getUserSafe(proposal.getFreelancerId());
 
             // Step 4: Testing mode — override emails
-            if (TESTING_MODE) {
-                log.warn("⚠️  TESTING MODE ON — overriding emails to: {}", TEST_EMAIL);
-                client.setEmail(TEST_EMAIL);
-                client.setName("Fares (Client)");
-                freelancer.setEmail(TEST_EMAIL);
-                freelancer.setName("Fares (Freelancer)");
-            }
+
 
             // Step 5: Build contract request
             ContractRequest contractRequest = ContractRequest.builder()
@@ -179,6 +181,7 @@ public class ServiceProposal implements IServiceProposal {
             throw new RuntimeException("Error accepting proposal: " + e.getMessage());
         }
     }
+
 
     // ── STATS ─────────────────────────────────────────────────────────────────
 
@@ -314,12 +317,15 @@ public class ServiceProposal implements IServiceProposal {
 
     // ── HELPER ────────────────────────────────────────────────────────────────
 
-    private User getUserSafe(int id) {
+    private User getUserSafe( int id) {
         try {
-            return userClient.getUserById(id);
+            User user = userClient.getUserById((long) id);
+            log.info("Fetched user {}: email={}, name={}", id, user.getEmail(), user.getName());
+            return user;
         } catch (FeignException e) {
-            log.warn("User microservice unavailable, returning mock for ID: {}", id);
-            return new User(id, "Mock User " + id, "mock" + id + "@email.com", "MOCK_ROLE");
+            log.error("User fetch FAILED for ID {}: status={} body={}",
+                    id, e.status(), e.contentUTF8());
+            throw new RuntimeException("Cannot fetch user " + id + ": " + e.getMessage());
         }
     }
 }

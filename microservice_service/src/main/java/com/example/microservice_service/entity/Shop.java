@@ -30,6 +30,7 @@ public class Shop {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(columnDefinition = "TEXT")
     private String bannerUrl;
 
     private String avatarUrl;

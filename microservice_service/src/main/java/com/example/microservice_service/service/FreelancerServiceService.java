@@ -4,22 +4,35 @@ import com.example.microservice_service.entity.FreelancerService;
 import com.example.microservice_service.entity.Shop;
 import com.example.microservice_service.entity.enums.ServiceStatus;
 import com.example.microservice_service.repository.FreelancerServiceRepository;
-import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class FreelancerServiceService {
 
     private final FreelancerServiceRepository serviceRepository;
     private final ShopService shopService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // Manual constructor for the final fields — Lombok can't mix with @PersistenceContext
+    public FreelancerServiceService(FreelancerServiceRepository serviceRepository,
+                                    ShopService shopService) {
+        this.serviceRepository = serviceRepository;
+        this.shopService = shopService;
+    }
+
+    @Transactional
     public FreelancerService createService(Long shopId, FreelancerService service) {
-        Shop shop = shopService.getShopById(shopId);
-        service.setShop(shop);
+        // getReference() creates a managed proxy — Hibernate correctly writes the FK
+        Shop shopRef = entityManager.getReference(Shop.class, shopId);
+        service.setShop(shopRef);
         service.setStatus(ServiceStatus.DRAFT);
-        return serviceRepository.save(service);
+        return serviceRepository.saveAndFlush(service);
     }
 
     public FreelancerService getServiceById(Long id) {
@@ -48,6 +61,7 @@ public class FreelancerServiceService {
         return serviceRepository.findByStatus(ServiceStatus.SUBMITTED);
     }
 
+    @Transactional
     public FreelancerService updateService(Long id, FreelancerService updated) {
         FreelancerService existing = getServiceById(id);
         existing.setTitle(updated.getTitle());
@@ -62,7 +76,7 @@ public class FreelancerServiceService {
         return serviceRepository.save(existing);
     }
 
-    // Freelancer submits service for moderation
+    @Transactional
     public FreelancerService submitForReview(Long id) {
         FreelancerService service = getServiceById(id);
         if (service.getStatus() != ServiceStatus.DRAFT && service.getStatus() != ServiceStatus.REJECTED) {
@@ -72,7 +86,7 @@ public class FreelancerServiceService {
         return serviceRepository.save(service);
     }
 
-    // Admin approves service
+    @Transactional
     public FreelancerService approveService(Long id) {
         FreelancerService service = getServiceById(id);
         service.setStatus(ServiceStatus.ACTIVE);
@@ -80,7 +94,7 @@ public class FreelancerServiceService {
         return serviceRepository.save(service);
     }
 
-    // Admin rejects service
+    @Transactional
     public FreelancerService rejectService(Long id, String reason) {
         FreelancerService service = getServiceById(id);
         service.setStatus(ServiceStatus.REJECTED);
@@ -88,7 +102,7 @@ public class FreelancerServiceService {
         return serviceRepository.save(service);
     }
 
-    // Freelancer pauses/unpauses their service
+    @Transactional
     public FreelancerService togglePause(Long id) {
         FreelancerService service = getServiceById(id);
         if (service.getStatus() == ServiceStatus.ACTIVE) {
@@ -101,12 +115,14 @@ public class FreelancerServiceService {
         return serviceRepository.save(service);
     }
 
+    @Transactional
     public FreelancerService archiveService(Long id) {
         FreelancerService service = getServiceById(id);
         service.setStatus(ServiceStatus.ARCHIVED);
         return serviceRepository.save(service);
     }
 
+    @Transactional
     public void deleteService(Long id) {
         serviceRepository.deleteById(id);
     }

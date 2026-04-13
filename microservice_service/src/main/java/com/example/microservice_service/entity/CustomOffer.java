@@ -35,6 +35,8 @@ public class CustomOffer {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal offerPrice;
 
+    // FIX: kept nullable = false but @PrePersist now guarantees a default value
+    // so the column never receives null even if the client omits the field
     @Column(nullable = false)
     private Integer deliveryDays;
 
@@ -57,5 +59,7 @@ public class CustomOffer {
         createdAt = LocalDateTime.now();
         if (status == null) status = CustomOfferStatus.PENDING;
         if (expiresAt == null) expiresAt = createdAt.plusDays(7);
+        // FIX: safety default — prevents "column cannot be null" when client omits deliveryDays
+        if (deliveryDays == null) deliveryDays = 7;
     }
 }

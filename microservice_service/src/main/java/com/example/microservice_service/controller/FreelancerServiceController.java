@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -19,8 +20,32 @@ public class FreelancerServiceController {
     @PostMapping("/shop/{shopId}")
     public ResponseEntity<FreelancerService> createService(
             @PathVariable Long shopId,
-            @RequestBody FreelancerService service) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(serviceService.createService(shopId, service));
+            @RequestBody Map<String, Object> body) {
+
+        FreelancerService service = new FreelancerService();
+
+        service.setTitle(((String) body.get("title")).trim());
+        service.setDescription(((String) body.get("description")).trim());
+        service.setCategory((String) body.get("category"));
+        service.setTags(body.get("tags") != null ? (String) body.get("tags") : null);
+        service.setMediaUrls(body.get("mediaUrls") != null ? (String) body.get("mediaUrls") : null);
+        service.setRequirementsDescription(
+                body.get("requirementsDescription") != null ? (String) body.get("requirementsDescription") : null
+        );
+        service.setRevisionCount(
+                body.get("revisionCount") != null ? Integer.parseInt(body.get("revisionCount").toString()) : 0
+        );
+        service.setPrice(new BigDecimal(body.get("price").toString()));
+
+        // Accept both field names — Angular may send either
+        Object days = body.get("deliveryDays");
+        if (days == null) days = body.get("deliveryTimeDays");
+        if (days == null) throw new IllegalArgumentException("deliveryDays is required");
+        service.setDeliveryDays(Integer.parseInt(days.toString()));
+
+        // slug is auto-generated in @PrePersist, shop is set in createService()
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(serviceService.createService(shopId, service));
     }
 
     @GetMapping

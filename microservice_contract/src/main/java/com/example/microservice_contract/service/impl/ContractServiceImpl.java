@@ -42,9 +42,6 @@ public class ContractServiceImpl implements IContractService {
     @Override
     public ContractDto.Response createContract(ContractDto.CreateRequest request) {
 
-        // ── Auto-enrich with real emails/names from user microservice ─────────
-        // If the caller already provided emails (e.g. from proposal service
-        // in testing mode), we keep them. Otherwise we fetch from user service.
         String clientEmail     = request.getClientEmail();
         String clientName      = request.getClientName();
         String freelancerEmail = request.getFreelancerEmail();
@@ -76,7 +73,6 @@ public class ContractServiceImpl implements IContractService {
             }
         }
 
-        // ── Build and save contract ───────────────────────────────────────────
         Contract contract = Contract.builder()
                 .projectId(request.getProjectId())
                 .proposalId(request.getProposalId())
@@ -93,7 +89,6 @@ public class ContractServiceImpl implements IContractService {
         Contract saved = contractRepository.save(contract);
         log.info("Contract {} saved, initiating signatures", saved.getId());
 
-        // ── Initiate signatures with resolved emails ──────────────────────────
         initiateSignatures(saved, request.getClientId(), clientEmail, clientName,
                 request.getFreelancerId(), freelancerEmail, freelancerName);
 
@@ -111,6 +106,14 @@ public class ContractServiceImpl implements IContractService {
                         .signerName(clientName)
                         .build());
 
+        // FIXED: Add delay to avoid Mailtrap rate limit (550 Too many emails per second)
+        try {
+            Thread.sleep(3000); // 3 second delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Sleep interrupted between email sends");
+        }
+
         signatureService.initiateSignature(contract.getId(),
                 ContractSignatureDto.CreateRequest.builder()
                         .signerId(freelancerId)
@@ -119,8 +122,6 @@ public class ContractServiceImpl implements IContractService {
                         .signerName(freelancerName)
                         .build());
     }
-
-    // ── Read methods ──────────────────────────────────────────────────────────
 
     @Override @Transactional(readOnly = true)
     public List<ContractDto.Response> getAllContracts() {

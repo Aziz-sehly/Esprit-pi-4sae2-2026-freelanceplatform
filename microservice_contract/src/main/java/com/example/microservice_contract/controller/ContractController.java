@@ -117,7 +117,13 @@ public class ContractController {
     }
 
     // ── PDF ───────────────────────────────────────────────────────────────────
-    // Public — accessible from the signing email link without a JWT
+    //
+    // FIX: Use "inline" disposition so the browser renders the PDF inside an
+    //      <iframe> instead of triggering an OS download dialog.
+    //      The Angular component fetches the blob with the JWT auth header and
+    //      creates a local object URL for the iframe src — the disposition header
+    //      controls what the browser does when it resolves that URL.
+    //
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
         Contract contract = contractRepository.findById(id)
@@ -126,8 +132,12 @@ public class ContractController {
         byte[] pdf = pdfService.generateContractPdf(contract);
 
         return ResponseEntity.ok()
+                // ↓ Changed from "attachment" to "inline" — browser will render, not download
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"contract-" + id + ".pdf\"")
+                        "inline; filename=\"contract-" + id + ".pdf\"")
+                // Allow the Angular app to read the response inside an iframe / fetch
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        HttpHeaders.CONTENT_DISPOSITION)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
     }

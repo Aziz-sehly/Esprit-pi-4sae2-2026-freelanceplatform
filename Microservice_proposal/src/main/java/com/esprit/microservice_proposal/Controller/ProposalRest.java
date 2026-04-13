@@ -37,6 +37,18 @@ public class ProposalRest {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    // ✅ NOUVEAU — CLIENT rejette
+    @PreAuthorize("hasAuthority('CLIENT')")
+    @PostMapping("/Reject/{proposalId}")
+    public ResponseEntity<?> RejectProposal(@PathVariable int proposalId,
+                                            HttpServletRequest request) {
+        try {
+            Long clientId = (Long) request.getAttribute("userId");
+            return ResponseEntity.ok(serviceProposal.rejectProposal(proposalId, clientId.intValue()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
     // Any authenticated user can view proposals
     @GetMapping("/GetAllProposals")

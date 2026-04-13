@@ -8,22 +8,20 @@ import java.time.LocalDateTime;
 
 public class ContractSignatureDto {
 
-    // ── 1. Client initiates a signature request ────────────────────────────────
-    // Called once per signer to create a token and send the signing email
+    // ── 1. Initiate a signature request ───────────────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CreateRequest {
         @NotNull  private Long   signerId;
-        @NotBlank private String signerRole;   // "CLIENT" or "FREELANCER"
-        @NotBlank private String signerEmail;  // used to send the signing link
-        @NotBlank private String signerName;   // used in the email greeting
+        @NotBlank private String signerRole;
+        @NotBlank private String signerEmail;
+        @NotBlank private String signerName;
     }
 
-    // ── 2. Signer submits their drawn signature ────────────────────────────────
-    // Called from the signing page after the user draws their signature
+    // ── 2. Submit the drawn / uploaded signature ───────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class SignRequest {
-        @NotBlank private String token;         // the unique signing token from the email link
-        @NotBlank private String signatureData; // base64-encoded PNG from canvas
+        @NotBlank private String token;
+        @NotBlank private String signatureData;
         private String ipAddress;
     }
 
@@ -38,19 +36,50 @@ public class ContractSignatureDto {
     // ── Response ───────────────────────────────────────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class Response {
+        // Identity
         private Long            id;
         private Long            contractId;
         private Long            signerId;
         private String          signerRole;
         private String          signerEmail;
         private String          signerName;
-        private SignatureStatus  status;
-        private String          signatureData;
-        private String          token;          // returned so frontend can build signing link
-        private String          ipAddress;
-        private LocalDateTime   signedAt;
+
+        // Workflow
+        private SignatureStatus status;
+        private String          token;
         private LocalDateTime   expiresAt;
         private LocalDateTime   createdAt;
-       private boolean  signed;
+        private boolean         signed;
+        private LocalDateTime   signedAt;
+        private Long            signedByUserId;
+        private String          ipAddress;
+
+        // Visual signature
+        private String          signatureData;
+
+        // Cryptographic proof
+        private String  cryptoPayload;
+        private String  cryptoSignature;
+        private String  cryptoPublicKey;
+        private String  keyFingerprint;
+        private boolean cryptoVerified;
+
+        /**
+         * 12-digit numeric signature code — uniquely identifies this signing event.
+         * Formatted for display as: XXXX - XXXX - XXXX
+         */
+        private Long numericSignature;
+    }
+
+    // ── Verify response ────────────────────────────────────────────────────────
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class VerifyResponse {
+        private Long          signatureId;
+        private boolean       valid;
+        private String        signerEmail;
+        private String        signerRole;
+        private LocalDateTime signedAt;
+        private String        keyFingerprint;
+        private String        message;
     }
 }

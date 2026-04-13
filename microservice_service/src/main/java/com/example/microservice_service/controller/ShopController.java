@@ -1,5 +1,6 @@
 package com.example.microservice_service.controller;
 
+import com.example.microservice_service.dto.ShopRequest;
 import com.example.microservice_service.entity.Shop;
 import com.example.microservice_service.Security.JwtUtil;
 import com.example.microservice_service.service.ShopService;
@@ -17,18 +18,16 @@ public class ShopController {
     private final ShopService shopService;
     private final JwtUtil jwtUtil;
 
-    // FREELANCER only
     @PostMapping
     public ResponseEntity<Shop> createShop(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody Shop shop) {
+            @RequestBody ShopRequest shopRequest) {      // ✅ use DTO, not raw Shop entity
         String token = authHeader.substring(7);
         Long userId = jwtUtil.extractUserId(token);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(shopService.createShop(userId, shop));
+                .body(shopService.createShop(userId, shopRequest));
     }
 
-    // Anyone authenticated
     @GetMapping
     public ResponseEntity<List<Shop>> getAllShops() {
         return ResponseEntity.ok(shopService.getAllShops());
@@ -36,26 +35,28 @@ public class ShopController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Shop> getShopById(@PathVariable Long id) {
-        return ResponseEntity.ok(shopService.getShopById(id));
+        Shop shop = shopService.getShopById(id);
+        if (shop == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(shop);
     }
 
     @GetMapping("/freelancer/{freelancerId}")
     public ResponseEntity<Shop> getShopByFreelancer(@PathVariable Long freelancerId) {
-        return ResponseEntity.ok(shopService.getShopByFreelancerId(freelancerId));
+        Shop shop = shopService.getShopByFreelancerId(freelancerId);
+        if (shop == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(shop);
     }
 
-    // FREELANCER only (own shop)
     @PutMapping("/{id}")
     public ResponseEntity<Shop> updateShop(
             @PathVariable Long id,
-            @RequestBody Shop shop,
+            @RequestBody ShopRequest shopRequest,        // ✅ use DTO, not raw Shop entity
             @RequestHeader("Authorization") String authHeader) {
         String token = authHeader.substring(7);
         Long userId = jwtUtil.extractUserId(token);
-        return ResponseEntity.ok(shopService.updateShop(id, shop, userId));
+        return ResponseEntity.ok(shopService.updateShop(id, shopRequest, userId));
     }
 
-    // FREELANCER only (own shop)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteShop(
             @PathVariable Long id,
