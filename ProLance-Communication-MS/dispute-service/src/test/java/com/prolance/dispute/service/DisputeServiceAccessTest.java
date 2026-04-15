@@ -84,9 +84,7 @@ class DisputeServiceAccessTest {
     @Test
     void deleteEvidence_rejectsUnrelatedNonAdmin() {
         Dispute dispute = dispute(5L, 10L);
-        Evidence evidence = evidence(77L, 5L, 20L, false);
         when(disputeRepository.findById(5L)).thenReturn(Optional.of(dispute));
-        when(evidenceRepository.findById(77L)).thenReturn(Optional.of(evidence));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> service.deleteEvidence(5L, 77L, "30", "ROLE_USER"));
