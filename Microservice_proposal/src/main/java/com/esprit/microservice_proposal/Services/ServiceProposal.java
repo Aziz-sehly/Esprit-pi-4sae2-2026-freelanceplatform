@@ -35,10 +35,6 @@ public class ServiceProposal implements IServiceProposal {
     @Value("${proposal.expiration.days:14}")
     private int expirationDays;
 
-    // ── TESTING FLAG ──────────────────────────────────────────────────────────
-    private static final boolean TESTING_MODE = false;
-    private static final String  TEST_EMAIL   = "ffaresjebali@gmail.com";
-
     // ── CRUD ──────────────────────────────────────────────────────────────────
 
     @Override
@@ -73,6 +69,7 @@ public class ServiceProposal implements IServiceProposal {
     public List<Proposal> getProposals() {
         return proposalRepository.findAll();
     }
+
     @Override
     @Transactional
     public Proposal rejectProposal(int proposalId, int clientId) {
@@ -125,16 +122,16 @@ public class ServiceProposal implements IServiceProposal {
 
     @Override
     @Transactional
+    // ServiceProposal.java - Updated acceptProposal method
     public ContractResponse acceptProposal(int proposalId, int clientId) {
         try {
             log.info("Accepting proposal {} for client {}", proposalId, clientId);
 
-            // Step 1: Mark selected proposal as ACCEPTED
             Proposal proposal = getProposal(proposalId);
             proposal.setStatus(ProposalStatus.ACCEPTED);
             proposalRepository.save(proposal);
 
-            // Step 2: Reject all other proposals for the same project
+            // Reject other proposals
             List<Proposal> others = proposalRepository.findByProjectId(proposal.getProjectId());
             for (Proposal other : others) {
                 if (!other.getId().equals(proposal.getId())) {
@@ -143,14 +140,17 @@ public class ServiceProposal implements IServiceProposal {
                 }
             }
 
-            // Step 3: Fetch client and freelancer
-            User client     = getUserSafe(clientId);
+            // Update project status
+            try {
+                projectFeignClient.updateProjectStatus(proposal.getProjectId(), "IN_PROGRESS");
+            } catch (Exception e) {
+                log.warn("Could not update project status: {}", e.getMessage());
+            }
+
+            User client = getUserSafe(clientId);
             User freelancer = getUserSafe(proposal.getFreelancerId());
 
-            // Step 4: Testing mode — override emails
-
-
-            // Step 5: Build contract request
+            // ✅ Build contract with payment structure
             ContractRequest contractRequest = ContractRequest.builder()
                     .projectId(Long.valueOf(proposal.getProjectId()))
                     .proposalId(Long.valueOf(proposal.getId()))
@@ -162,13 +162,17 @@ public class ServiceProposal implements IServiceProposal {
                     .freelancerName(freelancer.getName())
                     .amount(BigDecimal.valueOf(proposal.getProposedPrice()))
                     .platformFeePercentage(BigDecimal.valueOf(10.00))
-                    .paymentStructure("FIXED")
+                    .paymentStructure(proposal.getPaymentStructure().name()) // ✅ Pass payment structure
+                    .hourlyRate(proposal.getHourlyRate() != null ?
+                            BigDecimal.valueOf(proposal.getHourlyRate()) : null)
+                    .estimatedHoursPerWeek(proposal.getEstimatedHoursPerWeek())
+                    .milestoneCount(proposal.getMilestoneCount())
+                    .milestoneDetails(proposal.getMilestoneDetails())
                     .startDate(LocalDateTime.now())
                     .endDate(LocalDateTime.now().plusDays(proposal.getDeliveryDays()))
                     .description(proposal.getCoverLetter())
                     .build();
 
-            // Step 6: Call contract microservice
             ContractResponse response = contractClient.createContract(contractRequest);
             log.info("Contract created successfully with ID: {}", response.getId());
             return response;
@@ -181,18 +185,16 @@ public class ServiceProposal implements IServiceProposal {
             throw new RuntimeException("Error accepting proposal: " + e.getMessage());
         }
     }
-
-
     // ── STATS ─────────────────────────────────────────────────────────────────
 
     @Override
     public ProposalStatsDTO getStatsByFreelancer(int freelancerId) {
         List<Proposal> proposals = proposalRepository.findByFreelancerId(freelancerId);
 
-        int total    = proposals.size();
+        int total = proposals.size();
         int accepted = (int) proposals.stream().filter(p -> p.getStatus() == ProposalStatus.ACCEPTED).count();
         int rejected = (int) proposals.stream().filter(p -> p.getStatus() == ProposalStatus.REJECTED).count();
-        int pending  = (int) proposals.stream().filter(p -> p.getStatus() == ProposalStatus.PENDING).count();
+        int pending = (int) proposals.stream().filter(p -> p.getStatus() == ProposalStatus.PENDING).count();
 
         double acceptanceRate = total > 0 ? (double) accepted / total : 0;
 
@@ -225,36 +227,103 @@ public class ServiceProposal implements IServiceProposal {
         if (proposals.isEmpty()) return List.of();
 
         Project project = null;
-        try { project = projectFeignClient.getProjectById(projectId); }
-        catch (Exception ignored) {}
+        try {
+            project = projectFeignClient.getProjectById(projectId);
+        } catch (Exception ignored) {
+        }
 
-        final float budgetMid = project != null
-                ? ((project.getBudget_min() != null ? project.getBudget_min() : 0)
-                +  (project.getBudget_max() != null ? project.getBudget_max() : 0)) / 2f
-                : 0f;
+        // Récupérer budget du projet (peut être null)
+        final Float budgetMin = project != null ? project.getBudget_min() : null;
+        final Float budgetMax = project != null ? project.getBudget_max() : null;
 
-        float maxPrice     = (float) proposals.stream().filter(p -> p.getProposedPrice() != null)
-                .mapToDouble(p -> p.getProposedPrice()).max().orElse(1);
-        int   maxDays      = proposals.stream().filter(p -> p.getDeliveryDays() != null)
-                .mapToInt(Proposal::getDeliveryDays).max().orElse(1);
-        int   maxRevisions = proposals.stream().filter(p -> p.getRevisionsOffered() != null)
-                .mapToInt(Proposal::getRevisionsOffered).max().orElse(1);
+        // Calculer budgetMid seulement si les deux sont définis
+        final float budgetMid;
+        final boolean hasValidBudget = budgetMin != null && budgetMax != null && budgetMax > 0;
+
+        if (hasValidBudget) {
+            budgetMid = (budgetMin + budgetMax) / 2f;
+        } else {
+            // Si pas de budget défini, utiliser la moyenne des prix proposés
+            budgetMid = (float) proposals.stream()
+                    .filter(p -> p.getProposedPrice() != null)
+                    .mapToDouble(p -> p.getProposedPrice())
+                    .average().orElse(0);
+        }
+
+        // Trouver min/max pour normalisation
+        float minPrice = (float) proposals.stream()
+                .filter(p -> p.getProposedPrice() != null)
+                .mapToDouble(p -> p.getProposedPrice())
+                .min().orElse(0);
+        float maxPrice = (float) proposals.stream()
+                .filter(p -> p.getProposedPrice() != null)
+                .mapToDouble(p -> p.getProposedPrice())
+                .max().orElse(0);
+
+        int minDays = proposals.stream()
+                .filter(p -> p.getDeliveryDays() != null)
+                .mapToInt(Proposal::getDeliveryDays)
+                .min().orElse(0);
+        int maxDays = proposals.stream()
+                .filter(p -> p.getDeliveryDays() != null)
+                .mapToInt(Proposal::getDeliveryDays)
+                .max().orElse(0);
+
+        int minRevisions = proposals.stream()
+                .filter(p -> p.getRevisionsOffered() != null)
+                .mapToInt(Proposal::getRevisionsOffered)
+                .min().orElse(0);
+        int maxRevisions = proposals.stream()
+                .filter(p -> p.getRevisionsOffered() != null)
+                .mapToInt(Proposal::getRevisionsOffered)
+                .max().orElse(0);
+
+        // Ranges pour normalisation
+        float priceRange = maxPrice - minPrice;
+        int daysRange = maxDays - minDays;
+        int revisionsRange = maxRevisions - minRevisions;
+
+        // Budget range pour calcul de différence relative
+        float budgetRange = hasValidBudget && budgetMax > budgetMin ? budgetMax - budgetMin : 0;
 
         return proposals.stream().map(p -> {
+                    // Price Score
                     double priceScore = 0;
                     if (p.getProposedPrice() != null && budgetMid > 0) {
-                        double diff = Math.abs(p.getProposedPrice() - budgetMid) / budgetMid;
-                        priceScore = Math.max(0, 1 - diff) * 40;
+                        if (hasValidBudget && budgetRange > 0) {
+                            // Normaliser par rapport au range du budget projet
+                            double diff = Math.abs(p.getProposedPrice() - budgetMid) / (budgetRange / 2);
+                            priceScore = Math.max(0, 1 - Math.min(diff, 1)) * 40;
+                        } else {
+                            // Pas de budget défini: comparer avec autres propositions
+                            if (priceRange > 0) {
+                                double normalized = (p.getProposedPrice() - minPrice) / priceRange;
+                                // Favoriser prix moyen (ni trop cher ni trop bas)
+                                priceScore = (1 - Math.abs(normalized - 0.5) * 2) * 40;
+                            } else {
+                                priceScore = 20; // Score neutre
+                            }
+                        }
                     }
 
+                    // Delivery Score: moins de jours = meilleur
                     double deliveryScore = 0;
-                    if (p.getDeliveryDays() != null && maxDays > 0) {
-                        deliveryScore = (1.0 - (double) p.getDeliveryDays() / maxDays) * 35;
+                    if (p.getDeliveryDays() != null) {
+                        if (daysRange > 0) {
+                            deliveryScore = (1.0 - (double) (p.getDeliveryDays() - minDays) / daysRange) * 35;
+                        } else {
+                            deliveryScore = 17.5;
+                        }
                     }
 
+                    // Revision Score: plus de révisions = meilleur
                     double revisionScore = 0;
-                    if (p.getRevisionsOffered() != null && maxRevisions > 0) {
-                        revisionScore = ((double) p.getRevisionsOffered() / maxRevisions) * 25;
+                    if (p.getRevisionsOffered() != null) {
+                        if (revisionsRange > 0) {
+                            revisionScore = ((double) (p.getRevisionsOffered() - minRevisions) / revisionsRange) * 25;
+                        } else {
+                            revisionScore = 12.5;
+                        }
                     }
 
                     double total = priceScore + deliveryScore + revisionScore;
@@ -269,7 +338,6 @@ public class ServiceProposal implements IServiceProposal {
                 .sorted(Comparator.comparingDouble(RankedProposalDTO::getScore).reversed())
                 .collect(Collectors.toList());
     }
-
     // ── COUNTER-OFFER ─────────────────────────────────────────────────────────
 
     @Override
@@ -317,7 +385,7 @@ public class ServiceProposal implements IServiceProposal {
 
     // ── HELPER ────────────────────────────────────────────────────────────────
 
-    private User getUserSafe( int id) {
+    private User getUserSafe(int id) {
         try {
             User user = userClient.getUserById((long) id);
             log.info("Fetched user {}: email={}, name={}", id, user.getEmail(), user.getName());

@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class ContractRequest {
     private Long projectId;
     private Long proposalId;
+
     private Long freelancerId;
     private Long clientId;
     private String clientEmail;
@@ -24,6 +25,12 @@ public class ContractRequest {
     private BigDecimal amount;
     private BigDecimal platformFeePercentage;
     private String paymentStructure;
+    // ✅ AJOUTER CES CHAMPS
+    private BigDecimal hourlyRate;
+    private Integer estimatedHoursPerWeek;
+    private Integer milestoneCount;
+    private String milestoneDetails;
+
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String description;

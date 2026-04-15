@@ -9,6 +9,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.io.UnsupportedEncodingException;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -16,11 +18,10 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    // 🔥 FRONTEND URL (Angular app), not backend/gateway
     @Value("${app.frontend-url:http://localhost:4200}")
     private String frontendUrl;
 
-    @Value("${app.mail.from:ProLance <noreply@prolance.com>}")
+    @Value("${app.mail.from:ProLance <ffaresjebali@gmail.com>}")
     private String fromEmail;
 
     public void sendSigningInvitation(String toEmail, String recipientName,
@@ -29,11 +30,23 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom("noreply@prolance.com", "ProLance");
+            // Extract email address from the "Name <email>" format
+            String senderEmail = extractEmailAddress(fromEmail);
+            String senderName = extractSenderName(fromEmail);
+
+            // Handle potential UnsupportedEncodingException
+            try {
+                helper.setFrom(senderEmail, senderName);
+            } catch (UnsupportedEncodingException e) {
+                // Fallback to just email without display name
+                log.warn("Unsupported encoding for sender name, using email only: {}", e.getMessage());
+                helper.setFrom(senderEmail);
+            }
+
             helper.setTo(toEmail);
             helper.setSubject("ProLance - Contract #" + contractId + " Awaits Your Signature");
 
-            String signingLink = "http://localhost:4200/front/sign-contract/" + contractId
+            String signingLink = frontendUrl + "/front/sign-contract/" + contractId
                     + "?token=" + token + "&role=" + signerRole;
 
             String html = """
@@ -60,40 +73,87 @@ public class EmailService {
                 </p>
               </div>
             </div>
-            """.formatted(recipientName, contractId, signerRole, signingLink);
+            """.formatted(recipientName != null ? recipientName : "User",
+                    contractId, signerRole, signingLink);
 
-            helper.setText(html, true); // true = isHtml
+            helper.setText(html, true);
             mailSender.send(message);
 
-            log.info("✅ Signing invitation sent to {} for contract {}", toEmail, contractId);
-        } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
-            throw new RuntimeException(e);
+            log.info("✅ Signing invitation sent to {} for contract {} using Brevo SMTP",
+                    toEmail, contractId);
+
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send email to {}: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("Failed to send signing invitation email", e);
         }
     }
 
     public void sendContractActivatedEmail(String toEmail,
                                            String recipientName,
                                            Long contractId) {
+        try {
+            String contractLink = frontendUrl + "/contracts/" + contractId;
+            String subject = "ProLance - Contract #" + contractId + " is Now Active";
 
-        String contractLink = String.format(
-                "%s/contracts/%d",
-                frontendUrl, contractId
-        );
+            String htmlBody = """
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="color: white; margin: 0;">✅ Contract Activated</h1>
+              </div>
+              <div style="padding: 30px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                <h2 style="color: #1e293b;">Hello %s,</h2>
+                <p style="color: #475569;">Great news! Contract #%d is now ACTIVE.</p>
+                <p style="color: #475569;">Both parties have signed the contract. You can view it here:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="%s" style="background: linear-gradient(135deg, #10b981, #059669);
+                     color: white; padding: 16px 40px; border-radius: 8px;
+                     text-decoration: none; font-weight: bold; font-size: 16px;">
+                    📄 View Contract
+                  </a>
+                </div>
+                <p style="color: #64748b;">Best regards,<br>The ProLance Team</p>
+              </div>
+            </div>
+            """.formatted(recipientName != null ? recipientName : "User",
+                    contractId, contractLink);
 
-        String subject = "ProLance - Contract #" + contractId + " is Now Active";
+            sendHtmlEmail(toEmail, subject, htmlBody);
+            log.info("✅ Activation email sent to {} for contract {} using Brevo SMTP",
+                    toEmail, contractId);
 
-        String body = String.format(
-                "Hello %s,\n\n" +
-                        "Great news! Contract #%d is now ACTIVE.\n\n" +
-                        "Both parties have signed the contract. You can view it here:\n%s\n\n" +
-                        "Best regards,\n" +
-                        "The ProLance Team",
-                recipientName, contractId, contractLink
-        );
+        } catch (Exception e) {
+            log.error("❌ Failed to send activation email to {}: {}", toEmail, e.getMessage(), e);
+            // Don't throw - activation email is non-critical
+        }
+    }
 
-        sendTextEmail(toEmail, subject, body);
-        log.info("✅ Activation email sent to {} for contract {}", toEmail, contractId);
+    private void sendHtmlEmail(String toEmail, String subject, String htmlBody) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            String senderEmail = extractEmailAddress(fromEmail);
+            String senderName = extractSenderName(fromEmail);
+
+            // Handle potential UnsupportedEncodingException
+            try {
+                helper.setFrom(senderEmail, senderName);
+            } catch (UnsupportedEncodingException e) {
+                // Fallback to just email without display name
+                log.warn("Unsupported encoding for sender name, using email only: {}", e.getMessage());
+                helper.setFrom(senderEmail);
+            }
+
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+
+            mailSender.send(message);
+            log.info("✅ HTML Email sent to {} | subject: {}", toEmail, subject);
+
+        } catch (MessagingException e) {
+            log.error("❌ Failed to send HTML email to {}: {}", toEmail, e.getMessage(), e);
+        }
     }
 
     private void sendTextEmail(String toEmail, String subject, String body) {
@@ -101,16 +161,58 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
 
-            helper.setFrom(fromEmail);
+            String senderEmail = extractEmailAddress(fromEmail);
+            String senderName = extractSenderName(fromEmail);
+
+            // Handle potential UnsupportedEncodingException
+            try {
+                helper.setFrom(senderEmail, senderName);
+            } catch (UnsupportedEncodingException e) {
+                // Fallback to just email without display name
+                log.warn("Unsupported encoding for sender name, using email only: {}", e.getMessage());
+                helper.setFrom(senderEmail);
+            }
+
             helper.setTo(toEmail);
             helper.setSubject(subject);
-            helper.setText(body, false); // false = plain text, not HTML
+            helper.setText(body, false);
 
             mailSender.send(message);
-            log.info("✅ Email sent to {} | subject: {}", toEmail, subject);
+            log.info("✅ Text Email sent to {} | subject: {}", toEmail, subject);
 
         } catch (MessagingException e) {
-            log.error("❌ Failed to send email to {}: {}", toEmail, e.getMessage(), e);
+            log.error("❌ Failed to send text email to {}: {}", toEmail, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Extracts email address from format "Name <email@domain.com>"
+     */
+    private String extractEmailAddress(String fromAddress) {
+        if (fromAddress == null) return "noreply@prolance.com";
+
+        int start = fromAddress.indexOf('<');
+        int end = fromAddress.indexOf('>');
+
+        if (start >= 0 && end > start) {
+            return fromAddress.substring(start + 1, end).trim();
+        }
+
+        return fromAddress.trim();
+    }
+
+    /**
+     * Extracts sender name from format "Name <email@domain.com>"
+     */
+    private String extractSenderName(String fromAddress) {
+        if (fromAddress == null) return "ProLance";
+
+        int start = fromAddress.indexOf('<');
+
+        if (start > 0) {
+            return fromAddress.substring(0, start).trim();
+        }
+
+        return "ProLance";
     }
 }

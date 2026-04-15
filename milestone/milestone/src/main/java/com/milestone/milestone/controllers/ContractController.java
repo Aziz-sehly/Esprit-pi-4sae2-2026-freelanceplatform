@@ -3,21 +3,12 @@ package com.milestone.milestone.controllers;
 import com.milestone.milestone.dto.ContractRequest;
 import com.milestone.milestone.dto.ContractResponse;
 import com.milestone.milestone.models.ContractStatus;
+import com.milestone.milestone.security.JwtIdentityService;
 import com.milestone.milestone.services.ContractService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -27,50 +18,52 @@ import java.util.List;
 public class ContractController {
 
     private final ContractService service;
+    private final JwtIdentityService jwtIdentityService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ContractResponse create(@RequestBody @Valid ContractRequest req) {
-        return service.create(req);
+    public ContractResponse create(@RequestHeader("Authorization") String authorization, @RequestBody @Valid ContractRequest req) {
+        return service.create(req, jwtIdentityService.parseRequired(authorization));
     }
 
     @GetMapping("/{id}")
-    public ContractResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ContractResponse getById(@RequestHeader("Authorization") String authorization, @PathVariable Long id) {
+        return service.getById(id, jwtIdentityService.parseRequired(authorization));
     }
 
     @GetMapping
     public List<ContractResponse> list(
+            @RequestHeader("Authorization") String authorization,
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) Long freelancerId,
             @RequestParam(required = false) ContractStatus status
     ) {
-        return service.list(clientId, freelancerId, status);
+        return service.list(clientId, freelancerId, status, jwtIdentityService.parseRequired(authorization));
     }
 
     @PutMapping("/{id}")
-    public ContractResponse update(@PathVariable Long id, @RequestBody @Valid ContractRequest req) {
-        return service.update(id, req);
+    public ContractResponse update(@RequestHeader("Authorization") String authorization, @PathVariable Long id, @RequestBody @Valid ContractRequest req) {
+        return service.update(id, req, jwtIdentityService.parseRequired(authorization));
     }
 
     @PatchMapping("/{id}/accept")
-    public ContractResponse accept(@PathVariable Long id) {
-        return service.accept(id);
+    public ContractResponse accept(@RequestHeader("Authorization") String authorization, @PathVariable Long id) {
+        return service.accept(id, jwtIdentityService.parseRequired(authorization));
     }
 
     @PatchMapping("/{id}/reject")
-    public ContractResponse reject(@PathVariable Long id) {
-        return service.reject(id);
+    public ContractResponse reject(@RequestHeader("Authorization") String authorization, @PathVariable Long id) {
+        return service.reject(id, jwtIdentityService.parseRequired(authorization));
     }
 
     @PatchMapping("/{id}/complete")
-    public ContractResponse complete(@PathVariable Long id) {
-        return service.complete(id);
+    public ContractResponse complete(@RequestHeader("Authorization") String authorization, @PathVariable Long id) {
+        return service.complete(id, jwtIdentityService.parseRequired(authorization));
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
+    public void delete(@RequestHeader("Authorization") String authorization, @PathVariable Long id) {
+        service.delete(id, jwtIdentityService.parseRequired(authorization));
     }
 }

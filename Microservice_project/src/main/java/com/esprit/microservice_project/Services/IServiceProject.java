@@ -10,6 +10,7 @@ import java.util.List;
 public interface IServiceProject {
     Project addProject(Project project);
     Project updateProject(int id, Project newProject);
+    Project updateProjectStatus(int id, String status);
     List<Project> getProjects();
     Project getProject(int id);
     void deleteProject(int id);

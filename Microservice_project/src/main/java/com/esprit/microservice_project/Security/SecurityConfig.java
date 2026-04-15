@@ -40,9 +40,9 @@ public class SecurityConfig {
                         .requestMatchers("/project/stats/**").permitAll()
                         // Internal — called by other microservices
                         .requestMatchers("/project/notify/**").permitAll()
+                        .requestMatchers("/project/UpdateProjectStatus/**").permitAll()  // ← added
                         .requestMatchers("/actuator/**").permitAll()
                         // Everything else requires a valid JWT
-                        // (@PreAuthorize on controller handles role checks)
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

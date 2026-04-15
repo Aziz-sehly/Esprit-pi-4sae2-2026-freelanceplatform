@@ -45,7 +45,6 @@ public class ProjectRest {
             Long userId = (Long) request.getAttribute("userId");
             String email = (String) request.getAttribute("email");
 
-            // Always enforce authenticated client as owner
             if (p.getClientId() == null || p.getClientId() == 0) {
                 p.setClientId(userId);
             }
@@ -53,7 +52,6 @@ public class ProjectRest {
                 p.setClientEmail(email);
             }
 
-            // AI fill-in if description provided but fields missing
             boolean needsAI = p.getDescription() != null && !p.getDescription().isBlank()
                     && (isBlank(p.getTitle()) || isBlank(p.getSkills())
                     || p.getBudget_min() == null || p.getBudget_max() == null);
@@ -112,6 +110,21 @@ public class ProjectRest {
         }
         serviceproject.deleteProject(id);
         return ResponseEntity.ok().build();
+    }
+
+    // ── INTERNAL: called by proposal microservice via Feign ───────────────────
+
+    @PutMapping("/UpdateProjectStatus/{id}")
+    public ResponseEntity<?> UpdateProjectStatus(
+            @PathVariable int id,
+            @RequestParam("status") String status) {
+        try {
+            return ResponseEntity.ok(serviceproject.updateProjectStatus(id, status));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid status value: " + status);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping("/GetProjectsByClient/{clientId}")

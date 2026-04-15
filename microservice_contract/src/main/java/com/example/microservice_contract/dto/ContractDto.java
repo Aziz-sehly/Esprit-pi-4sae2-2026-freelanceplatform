@@ -11,43 +11,38 @@ import java.util.List;
 
 public class ContractDto {
 
-    // ── Create Request ─────────────────────────────────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CreateRequest {
 
-        // IDs
         @NotNull private Long projectId;
         @NotNull private Long proposalId;
         @NotNull private Long freelancerId;
         @NotNull private Long clientId;
 
-        // Client info — used to send signing email
-        @NotBlank private String clientEmail;
-        @NotBlank private String clientName;
+        private String clientEmail;
+        private String clientName;
+        private String freelancerEmail;
+        private String freelancerName;
 
-        // Freelancer info — used to send signing email
-        @NotBlank private String freelancerEmail;
-        @NotBlank private String freelancerName;
-
-        // Contract financials
         @NotNull @DecimalMin("0.01") private BigDecimal amount;
         @NotNull @DecimalMin("0") @DecimalMax("100") private BigDecimal platformFeePercentage;
         @NotNull private PaymentStructure paymentStructure;
 
-        // Contract dates
         @NotNull private LocalDateTime startDate;
         @NotNull private LocalDateTime endDate;
 
         private String description;
+
+        // Milestone data from proposal
+        private Integer milestoneCount;
+        private String  milestoneDetails;
     }
 
-    // ── Update Status Request ──────────────────────────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class UpdateStatusRequest {
         @NotNull private ContractStatus status;
     }
 
-    // ── Response ───────────────────────────────────────────────────────────────
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class Response {
         private Long                              id;
@@ -55,6 +50,8 @@ public class ContractDto {
         private Long                              proposalId;
         private Long                              freelancerId;
         private Long                              clientId;
+        private String                            clientName;
+        private String                            freelancerName;
         private BigDecimal                        amount;
         private BigDecimal                        platformFeePercentage;
         private PaymentStructure                  paymentStructure;
@@ -62,6 +59,7 @@ public class ContractDto {
         private LocalDateTime                     startDate;
         private LocalDateTime                     endDate;
         private String                            description;
+        private Long                              milestoneId;
         private LocalDateTime                     createdAt;
         private LocalDateTime                     updatedAt;
         private List<ContractExtensionDto.Response>  extensions;

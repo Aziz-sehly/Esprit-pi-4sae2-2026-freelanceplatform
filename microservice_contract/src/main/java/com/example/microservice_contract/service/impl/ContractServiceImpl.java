@@ -24,9 +24,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class ContractServiceImpl implements IContractService {
 
-    private final IContractRepository      contractRepository;
+    private final IContractRepository       contractRepository;
     private final IContractSignatureService signatureService;
-    private final ProposalClient           proposalClient;
+    private final ProposalClient            proposalClient;
     private final UserClient               userClient;
 
     public ContractServiceImpl(IContractRepository contractRepository,
@@ -52,7 +52,6 @@ public class ContractServiceImpl implements IContractService {
                 UserClient.UserData client = userClient.getUserById(request.getClientId());
                 clientEmail = client.getEmail();
                 clientName  = client.getFullName();
-                log.info("Fetched client email from user service: {}", clientEmail);
             } catch (Exception e) {
                 log.warn("Could not fetch client from user service: {}", e.getMessage());
                 clientEmail = "client" + request.getClientId() + "@prolance.com";
@@ -65,7 +64,6 @@ public class ContractServiceImpl implements IContractService {
                 UserClient.UserData freelancer = userClient.getUserById(request.getFreelancerId());
                 freelancerEmail = freelancer.getEmail();
                 freelancerName  = freelancer.getFullName();
-                log.info("Fetched freelancer email from user service: {}", freelancerEmail);
             } catch (Exception e) {
                 log.warn("Could not fetch freelancer from user service: {}", e.getMessage());
                 freelancerEmail = "freelancer" + request.getFreelancerId() + "@prolance.com";
@@ -78,26 +76,40 @@ public class ContractServiceImpl implements IContractService {
                 .proposalId(request.getProposalId())
                 .freelancerId(request.getFreelancerId())
                 .clientId(request.getClientId())
+                .clientName(clientName)
+                .freelancerName(freelancerName)
                 .amount(request.getAmount())
                 .platformFeePercentage(request.getPlatformFeePercentage())
                 .paymentStructure(request.getPaymentStructure())
                 .status(ContractStatus.PENDING)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
+                .description(request.getDescription())
+                // Store proposal milestone data for auto-creation on activation
+                .milestoneCount(request.getMilestoneCount())
+                .milestoneDetails(request.getMilestoneDetails())
                 .build();
 
         Contract saved = contractRepository.save(contract);
-        log.info("Contract {} saved, initiating signatures", saved.getId());
+        log.info("Contract {} saved ({}), initiating signatures",
+                saved.getId(), saved.getPaymentStructure());
 
-        initiateSignatures(saved, request.getClientId(), clientEmail, clientName,
-                request.getFreelancerId(), freelancerEmail, freelancerName);
+        final String finalClientEmail     = clientEmail;
+        final String finalClientName      = clientName;
+        final String finalFreelancerEmail = freelancerEmail;
+        final String finalFreelancerName  = freelancerName;
+
+        initiateSignatures(saved,
+                request.getClientId(),     finalClientEmail,     finalClientName,
+                request.getFreelancerId(), finalFreelancerEmail, finalFreelancerName);
 
         return toResponse(saved);
     }
 
     private void initiateSignatures(Contract contract,
-                                    Long clientId,    String clientEmail,    String clientName,
+                                    Long clientId,     String clientEmail,     String clientName,
                                     Long freelancerId, String freelancerEmail, String freelancerName) {
+
         signatureService.initiateSignature(contract.getId(),
                 ContractSignatureDto.CreateRequest.builder()
                         .signerId(clientId)
@@ -106,12 +118,8 @@ public class ContractServiceImpl implements IContractService {
                         .signerName(clientName)
                         .build());
 
-        // FIXED: Add delay to avoid Mailtrap rate limit (550 Too many emails per second)
-        try {
-            Thread.sleep(3000); // 3 second delay
-        } catch (InterruptedException e) {
+        try { Thread.sleep(3000); } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("Sleep interrupted between email sends");
         }
 
         signatureService.initiateSignature(contract.getId(),
@@ -125,7 +133,8 @@ public class ContractServiceImpl implements IContractService {
 
     @Override @Transactional(readOnly = true)
     public List<ContractDto.Response> getAllContracts() {
-        return contractRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
+        return contractRepository.findAll().stream()
+                .map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override @Transactional(readOnly = true)
@@ -159,19 +168,22 @@ public class ContractServiceImpl implements IContractService {
     }
 
     @Override @Transactional(readOnly = true)
-    public List<ContractDto.Response> getContractsByClientAndStatus(Long clientId, ContractStatus status) {
+    public List<ContractDto.Response> getContractsByClientAndStatus(
+            Long clientId, ContractStatus status) {
         return contractRepository.findByClientIdAndStatus(clientId, status).stream()
                 .map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override @Transactional(readOnly = true)
-    public List<ContractDto.Response> getContractsByFreelancerAndStatus(Long freelancerId, ContractStatus status) {
+    public List<ContractDto.Response> getContractsByFreelancerAndStatus(
+            Long freelancerId, ContractStatus status) {
         return contractRepository.findByFreelancerIdAndStatus(freelancerId, status).stream()
                 .map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
-    public ContractDto.Response updateContractStatus(Long id, ContractDto.UpdateStatusRequest request) {
+    public ContractDto.Response updateContractStatus(Long id,
+                                                     ContractDto.UpdateStatusRequest request) {
         Contract contract = findOrThrow(id);
         contract.setStatus(request.getStatus());
         return toResponse(contractRepository.save(contract));
@@ -224,16 +236,21 @@ public class ContractServiceImpl implements IContractService {
                 .collect(Collectors.toList());
 
         return ContractDto.Response.builder()
-                .id(c.getId()).projectId(c.getProjectId())
+                .id(c.getId())
+                .projectId(c.getProjectId())
                 .proposalId(c.getProposalId())
                 .freelancerId(c.getFreelancerId())
                 .clientId(c.getClientId())
+                .clientName(c.getClientName())
+                .freelancerName(c.getFreelancerName())
                 .amount(c.getAmount())
                 .platformFeePercentage(c.getPlatformFeePercentage())
                 .paymentStructure(c.getPaymentStructure())
                 .status(c.getStatus())
                 .startDate(c.getStartDate())
                 .endDate(c.getEndDate())
+                .description(c.getDescription())
+                .milestoneId(c.getMilestoneId())
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
                 .extensions(extensions)

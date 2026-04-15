@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-@FeignClient(name = "microservice-project", url = "http://localhost:8765")
+@FeignClient(name = "microservice-project", url = "http://localhost:8091")
 public interface ProjectClient {
 
     @GetMapping("/project/GetAllProjects")

@@ -2,6 +2,8 @@ package com.example.microservice_contract.entity;
 
 import com.example.microservice_contract.Enum.ContractStatus;
 import com.example.microservice_contract.Enum.PaymentStructure;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Table(name = "contracts")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Contract {
@@ -26,6 +29,14 @@ public class Contract {
 
     @Column(name = "freelancer_id")
     private Long freelancerId;
+
+    @JsonIgnore
+    @Column(name = "client_name")
+    private String clientName;
+
+    @JsonIgnore
+    @Column(name = "freelancer_name")
+    private String freelancerName;
 
     @Column(name = "project_id")
     private Long projectId;
@@ -49,13 +60,24 @@ public class Contract {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default
-    private ContractStatus status = ContractStatus.ACTIVE;
+    private ContractStatus status = ContractStatus.PENDING;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;
 
     @Column(name = "end_date")
     private LocalDateTime endDate;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    // Milestone data passed from the proposal — stored so we can
+    // auto-create the milestone(s) when the contract becomes ACTIVE
+    @Column(name = "milestone_count")
+    private Integer milestoneCount;
+
+    @Column(name = "milestone_details", columnDefinition = "TEXT")
+    private String milestoneDetails;
 
     // FK references to other microservices — stored as plain IDs
     @Column(name = "dispute_id")

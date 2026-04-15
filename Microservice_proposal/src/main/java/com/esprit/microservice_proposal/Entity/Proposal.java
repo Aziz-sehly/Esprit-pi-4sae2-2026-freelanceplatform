@@ -1,26 +1,25 @@
+// Proposal.java
 package com.esprit.microservice_proposal.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
-
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "proposals")
 public class Proposal {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Simple INT → pas de @ManyToOne
     @Column(name = "project_id", nullable = false)
     private Integer projectId;
 
-    // Simple INT → pas de @ManyToOne
     @Column(name = "freelancer_id", nullable = false)
     private Integer freelancerId;
 
@@ -34,20 +33,37 @@ public class Proposal {
     private ProposalStatus status;
 
     private Boolean isInvited = false;
-    private Integer revisionsOffered =0;
+    private Integer revisionsOffered = 0;
 
-    //Expiration
+    // ✅ NEW: Payment Structure
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_structure", nullable = false)
+    private PaymentStructure paymentStructure = PaymentStructure.FIXED;
+
+    // For HOURLY projects
+    @Column(name = "hourly_rate")
+    private Float hourlyRate;
+
+    @Column(name = "estimated_hours_per_week")
+    private Integer estimatedHoursPerWeek;
+
+    // For MILESTONE projects
+    @Column(name = "milestone_count")
+    private Integer milestoneCount;
+
+    @Column(name = "milestone_details", columnDefinition = "TEXT")
+    private String milestoneDetails; // JSON string of milestones
+
+    // Expiration
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
 
-    //Counter-Offer
-    private Float   counterOfferPrice;     // prix proposé par le client
-    private String  counterOfferMessage;   // message du client
-    private LocalDateTime counterOfferAt;  // date de la contre-offre
+    // Counter-Offer
+    private Float counterOfferPrice;
+    private String counterOfferMessage;
+    private LocalDateTime counterOfferAt;
 
-    //Smart Ranking score
+    // Smart Ranking score
     @Column(name = "ranking_score")
     private Double rankingScore;
-
-
 }

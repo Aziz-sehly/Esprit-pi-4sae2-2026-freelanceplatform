@@ -30,24 +30,50 @@ public class ServiceProject implements IServiceProject {
         Project existingProject = projectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
-        existingProject.setTitle(newProject.getTitle());
-        existingProject.setDescription(newProject.getDescription());
-        existingProject.setCategory(newProject.getCategory());
-        existingProject.setSkills(newProject.getSkills());
-        existingProject.setBudget_min(newProject.getBudget_min());
-        existingProject.setBudget_max(newProject.getBudget_max());
-        existingProject.setDuration(newProject.getDuration());
-        existingProject.setExperienceLevel(newProject.getExperienceLevel());
-        existingProject.setStatus(newProject.getStatus());
-        existingProject.setDeadline(newProject.getDeadline());
-
-        // Only update clientEmail if provided
+        // Only update fields if they are not null (partial update support)
+        if (newProject.getTitle() != null) {
+            existingProject.setTitle(newProject.getTitle());
+        }
+        if (newProject.getDescription() != null) {
+            existingProject.setDescription(newProject.getDescription());
+        }
+        if (newProject.getCategory() != null) {
+            existingProject.setCategory(newProject.getCategory());
+        }
+        if (newProject.getSkills() != null) {
+            existingProject.setSkills(newProject.getSkills());
+        }
+        if (newProject.getBudget_min() != null) {
+            existingProject.setBudget_min(newProject.getBudget_min());
+        }
+        if (newProject.getBudget_max() != null) {
+            existingProject.setBudget_max(newProject.getBudget_max());
+        }
+        if (newProject.getDuration() != null) {
+            existingProject.setDuration(newProject.getDuration());
+        }
+        if (newProject.getExperienceLevel() != null) {
+            existingProject.setExperienceLevel(newProject.getExperienceLevel());
+        }
+        if (newProject.getStatus() != null) {
+            existingProject.setStatus(newProject.getStatus());
+        }
+        if (newProject.getDeadline() != null) {
+            existingProject.setDeadline(newProject.getDeadline());
+        }
         if (newProject.getClientEmail() != null) {
             existingProject.setClientEmail(newProject.getClientEmail());
         }
-        // clientId never changes after creation — do not update it
 
         return projectRepository.save(existingProject);
+    }
+
+    @Override
+    public Project updateProjectStatus(int id, String status) {
+        Project existing = projectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + id));
+        existing.setStatus(Status.valueOf(status));
+        return projectRepository.save(existing);
     }
 
     @Override
@@ -69,7 +95,6 @@ public class ServiceProject implements IServiceProject {
 
     @Override
     public List<Project> getProjectsByClientId(int clientId) {
-        // ✅ use updated repository method
         return projectRepository.findByClientId((long) clientId);
     }
 
