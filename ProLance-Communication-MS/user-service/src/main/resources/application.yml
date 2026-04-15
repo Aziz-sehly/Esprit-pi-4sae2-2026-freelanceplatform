@@ -1,0 +1,54 @@
+server:
+  port: 8084
+  error:
+    include-message: always
+    include-binding-errors: on_param
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${USER_DB_URL:jdbc:mysql://localhost:3306/prolance_user?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${USER_DB_USER:root}
+    password: ${USER_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  mail:
+    host: ${MAIL_HOST:sandbox.smtp.mailtrap.io}
+    port: ${MAIL_PORT:2525}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:change-this-super-secret-key-at-least-32-characters}
+    expiration-minutes: 720
+  verification:
+    token-expiry-ms: ${APP_VERIFICATION_TOKEN_EXPIRY_MS:86400000}
+  public:
+    verification-base-url: ${APP_VERIFICATION_BASE_URL:http://localhost:8080}
+  mail:
+    from: ${APP_MAIL_FROM:ProLance <noreply@prolance.local>}
+  seed-admin:
+    username: ${SEED_ADMIN_USERNAME:admin}
+    email: ${SEED_ADMIN_EMAIL:admin@prolance.local}
+    password: ${SEED_ADMIN_PASSWORD:admin123}
+  # Compte de démo (vérifiez que app.seed-test-user.enabled=true pour les tests locaux)
+  seed-test-user:
+    enabled: ${SEED_TEST_USER_ENABLED:true}
+    username: ${SEED_TEST_USER_USERNAME:demo}
+    email: ${SEED_TEST_USER_EMAIL:demo@prolance.local}
+    password: ${SEED_TEST_USER_PASSWORD:demo12345}
+    first-name: ${SEED_TEST_USER_FIRST:Demo}
+    last-name: ${SEED_TEST_USER_LAST:User}

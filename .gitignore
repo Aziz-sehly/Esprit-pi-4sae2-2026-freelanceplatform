@@ -1,0 +1,30 @@
+# Angular / Node
+**/node_modules/
+**/dist/
+**/.angular/
+**/out-tsc/
+npm-debug.log
+yarn-error.log
+coverage/
+
+# Java / Maven
+**/target/
+**/*.iml
+
+# IDE
+.idea/
+**/.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Local data / uploads
+**/uploads/
+**/data/
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
