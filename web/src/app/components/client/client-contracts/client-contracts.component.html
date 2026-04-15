@@ -1,0 +1,150 @@
+<section class="contracts-shell">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Client contracts</p>
+      <h1>Manage your contracts</h1>
+      <p class="hero-copy">
+        Create agreements, review active engagements, and keep each project organized in one place.
+      </p>
+    </div>
+  </div>
+
+  <div *ngIf="banner" class="banner" [class.error]="bannerTone === 'error'">{{ banner }}</div>
+
+  <div class="contracts-grid">
+    <mat-card class="composer-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">New contract</p>
+          <h2>Send contract for acceptance</h2>
+        </div>
+      </div>
+
+      <form [formGroup]="form" class="contract-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Project title</mat-label>
+          <input matInput formControlName="title" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Scope and terms</mat-label>
+          <textarea matInput rows="6" formControlName="scope"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Total budget</mat-label>
+          <input matInput type="number" formControlName="totalBudget" />
+        </mat-form-field>
+
+        <div class="two-up">
+          <mat-form-field appearance="outline">
+            <mat-label>Client</mat-label>
+            <input matInput [value]="currentClientName" readonly />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Freelancer</mat-label>
+            <mat-select formControlName="freelancerId">
+              <mat-option *ngFor="let freelancer of freelancerOptions; trackBy: trackFreelancer" [value]="freelancer.id">
+                {{ freelancer.firstName }} {{ freelancer.lastName }} · #{{ freelancer.id }}
+              </mat-option>
+            </mat-select>
+            <mat-hint *ngIf="freelancersLoading">Loading verified freelancers...</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="selected-freelancer" *ngIf="form.controls.freelancerName.value as freelancerName">
+          <span>Selected freelancer</span>
+          <strong>{{ freelancerName }}</strong>
+        </div>
+
+        <div class="two-up">
+          <mat-form-field appearance="outline">
+            <mat-label>Start date</mat-label>
+            <input matInput [matDatepicker]="startDatePicker" [min]="minDate" formControlName="startDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="startDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #startDatePicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>End date</mat-label>
+            <input matInput [matDatepicker]="endDatePicker" [min]="endDateMin" formControlName="endDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="endDatePicker"></mat-datepicker-toggle>
+            <mat-datepicker #endDatePicker></mat-datepicker>
+          </mat-form-field>
+        </div>
+
+        <button mat-flat-button color="primary" type="button" (click)="create()" [disabled]="loading">
+          Create contract
+        </button>
+      </form>
+    </mat-card>
+
+    <div class="list-column">
+      <mat-card class="summary-card">
+        <div>
+          <span>Total contracts</span>
+          <strong>{{ contracts.length }}</strong>
+        </div>
+        <div>
+          <span>Active</span>
+          <strong>{{ activeCount }}</strong>
+        </div>
+        <div>
+          <span>Awaiting freelancer</span>
+          <strong>{{ pendingCount }}</strong>
+        </div>
+      </mat-card>
+
+      <div class="contract-list">
+        <mat-card class="contract-card" *ngFor="let contract of contracts">
+          <div class="contract-top">
+            <div>
+              <h3>{{ contract.title }}</h3>
+              <p>{{ contract.scope }}</p>
+            </div>
+            <mat-chip [color]="chipColor(contract.status)" selected>{{ statusLabel(contract.status) }}</mat-chip>
+          </div>
+
+          <div class="meta-grid">
+            <div>
+              <span>Freelancer</span>
+              <strong>{{ contract.freelancerName }}</strong>
+            </div>
+            <div>
+              <span>Budget</span>
+              <strong>{{ contract.totalBudget | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div>
+              <span>Start</span>
+              <strong>{{ contract.startDate || 'TBD' }}</strong>
+            </div>
+            <div>
+              <span>End</span>
+              <strong>{{ contract.endDate || 'TBD' }}</strong>
+            </div>
+          </div>
+
+          <div class="actions">
+          <a
+              mat-flat-button
+              color="primary"
+              *ngIf="contract.status === 'ACTIVE'"
+              [routerLink]="['/client/contracts', contract.id, 'workspace']">
+              Open workspace
+          </a>
+            <button mat-stroked-button type="button" disabled>Resources</button>
+            <button
+              mat-stroked-button
+              color="warn"
+              type="button"
+              *ngIf="contract.status !== 'ACTIVE'"
+              (click)="delete(contract)">
+              Delete
+            </button>
+          </div>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</section>

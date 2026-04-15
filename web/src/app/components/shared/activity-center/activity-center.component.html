@@ -1,0 +1,56 @@
+<section class="activity-shell" [class.client]="accentClass === 'client'" [class.freelancer]="accentClass === 'freelancer'">
+  <div class="hero-card">
+    <div>
+      <a class="back-link" [routerLink]="backLink">{{ backLabel }}</a>
+      <p class="eyebrow">Activity center</p>
+      <h1>{{ contract.title }}</h1>
+      <p class="hero-copy">One timeline for contract decisions, milestone progress, funding, disputes, calls, and shared material.</p>
+    </div>
+
+    <div class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="48" fill="currentColor" opacity=".12"></circle>
+        <path d="M38 94h64M48 72h44M48 50h22" stroke="currentColor" stroke-width="10" stroke-linecap="round"></path>
+        <circle cx="96" cy="50" r="8" fill="currentColor"></circle>
+      </svg>
+    </div>
+  </div>
+
+  <mat-card class="timeline-card">
+    <div class="timeline-head">
+      <div>
+        <p class="eyebrow">Contract history</p>
+        <h2>Everything in sequence</h2>
+      </div>
+      <button mat-stroked-button type="button" (click)="load()">Refresh</button>
+    </div>
+
+    <div class="error-banner" *ngIf="error">{{ error }}</div>
+
+    <div class="empty-state" *ngIf="loading">
+      <p>Loading activity timeline...</p>
+    </div>
+
+    <div class="timeline-list" *ngIf="!loading && items.length">
+      <article class="timeline-item" *ngFor="let item of items; trackBy: trackById" [class.success]="item.tone === 'success'" [class.warn]="item.tone === 'warn'" [class.info]="item.tone === 'info'">
+        <div class="timeline-item__rail">
+          <span class="timeline-dot"></span>
+        </div>
+        <div class="timeline-item__content">
+          <div class="timeline-item__top">
+            <div>
+              <p class="timeline-category">{{ item.category }}</p>
+              <h3>{{ item.title }}</h3>
+            </div>
+            <mat-chip>{{ item.date | date:'medium' }}</mat-chip>
+          </div>
+          <p>{{ item.description }}</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && !items.length">
+      <p>No activity found for this contract yet.</p>
+    </div>
+  </mat-card>
+</section>

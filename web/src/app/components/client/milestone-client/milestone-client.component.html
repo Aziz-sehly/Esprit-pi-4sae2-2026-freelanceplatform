@@ -1,0 +1,373 @@
+<section class="workspace-shell" *ngIf="contract as currentContract">
+  <div class="hero-card">
+    <div>
+      <a class="back-link" routerLink="/client/contracts">Back to contracts</a>
+      <p class="eyebrow">Client contract workspace</p>
+      <h1>{{ currentContract.title }}</h1>
+      <p class="hero-copy">{{ currentContract.scope }}</p>
+    </div>
+
+    <div class="hero-facts">
+      <div><span>Status</span><strong>{{ currentContract.status }}</strong></div>
+      <div><span>Budget</span><strong>{{ currentContract.totalBudget | currency:'USD':'symbol':'1.2-2' }}</strong></div>
+      <div><span>Freelancer</span><strong>{{ currentContract.freelancerName }}</strong></div>
+      <div><span>Timeline</span><strong>{{ currentContract.startDate || 'TBD' }} to {{ currentContract.endDate || 'TBD' }}</strong></div>
+    </div>
+  </div>
+
+  <section class="call-alert" *ngIf="activeCallNotification">
+    <div>
+      <p class="eyebrow">Active call</p>
+      <h2>{{ activeCallNotification.message }}</h2>
+      <p>Join the live contract meeting room directly from here.</p>
+    </div>
+    <div class="call-alert__actions">
+      <a mat-flat-button color="primary" [href]="activeCallUrl" target="_blank" rel="noreferrer">Join call</a>
+      <button class="icon-utility-button" mat-icon-button type="button" (click)="dismissActiveCallBanner()" aria-label="Dismiss active call banner" title="Dismiss">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.29-6.3z" />
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <div *ngIf="banner" class="banner" [class.error]="bannerTone === 'error'">{{ banner }}</div>
+
+  <div class="stats-grid">
+    <mat-card><span>Milestones</span><strong>{{ milestones.length }}</strong></mat-card>
+    <mat-card><span>Total value</span><strong>{{ totalValue | currency:'USD':'symbol':'1.2-2' }}</strong></mat-card>
+    <mat-card><span>Funded</span><strong>{{ fundedCount }}</strong></mat-card>
+    <mat-card><span>Paid</span><strong>{{ paidCount }}</strong></mat-card>
+  </div>
+
+  <mat-card class="workspace-card">
+    <mat-tab-group [(selectedIndex)]="activeTab" animationDuration="220ms">
+      <mat-tab label="Overview">
+        <div class="tab-body overview-grid">
+          <section class="overview-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Workspace summary</p>
+                <h2>Contract health</h2>
+              </div>
+            </div>
+
+            <div class="overview-list">
+              <article class="overview-item">
+                <span>Pending review</span>
+                <strong>{{ submittedCount }}</strong>
+                <p>Milestones waiting for your approval or revision request.</p>
+              </article>
+              <article class="overview-item">
+                <span>Needs funding</span>
+                <strong>{{ approvedCount }}</strong>
+                <p>Approved milestones ready to move into the payment flow.</p>
+              </article>
+              <article class="overview-item">
+                <span>Latest focus</span>
+                <strong>{{ focusTitle }}</strong>
+                <p>Use the Milestones tab to review details, revisions, and resources.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="overview-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Quick actions</p>
+                <h2>Next step</h2>
+              </div>
+            </div>
+
+            <div class="quick-actions">
+              <button mat-flat-button color="primary" type="button" (click)="startCreate()">Create milestone</button>
+              <button mat-stroked-button type="button" (click)="setActiveTab(2)">Open payments</button>
+              <button mat-stroked-button type="button" (click)="setActiveTab(3)">Browse resources</button>
+              <a mat-stroked-button [routerLink]="['/client/contracts', contractId, 'activity']">Activity center</a>
+              <a mat-stroked-button [routerLink]="['/client/contracts', contractId, 'disputes']">Dispute center</a>
+            </div>
+          </section>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Milestones">
+        <div class="tab-body milestones-layout">
+          <section class="table-panel">
+            <div class="section-head section-head--compact">
+              <div>
+                <p class="eyebrow">Milestone list</p>
+                <h2>Structured review flow</h2>
+              </div>
+
+              <div class="table-toolbar">
+                <mat-form-field appearance="outline">
+                  <mat-label>Search milestones</mat-label>
+                  <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onListChange()" placeholder="Title, deliverable, amount..." />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Status</mat-label>
+                  <mat-select [(value)]="statusFilter" (selectionChange)="onListChange()">
+                    <mat-option value="ALL">All</mat-option>
+                    <mat-option value="PENDING">Ready for work</mat-option>
+                    <mat-option value="SUBMITTED">Awaiting approval</mat-option>
+                    <mat-option value="REVISION_REQUESTED">Revision needed</mat-option>
+                    <mat-option value="APPROVED">Approved</mat-option>
+                    <mat-option value="FUNDED">Secured</mat-option>
+                    <mat-option value="PAID">Completed</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Sort</mat-label>
+                  <mat-select [(value)]="sortOption" (selectionChange)="onListChange()">
+                    <mat-option value="latest">Newest first</mat-option>
+                    <mat-option value="oldest">Oldest first</mat-option>
+                    <mat-option value="amountDesc">Highest amount</mat-option>
+                    <mat-option value="amountAsc">Lowest amount</mat-option>
+                    <mat-option value="status">Status</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <button mat-flat-button color="primary" type="button" (click)="startCreate()">New milestone</button>
+              </div>
+            </div>
+
+            <div class="table-wrap" *ngIf="filteredMilestones.length; else emptyState">
+              <table mat-table [dataSource]="pagedMilestones" class="milestone-table">
+                <ng-container matColumnDef="title">
+                  <th mat-header-cell *matHeaderCellDef>Milestone</th>
+                  <td mat-cell *matCellDef="let milestone">
+                    <button class="row-title" type="button" (click)="selectMilestone(milestone)">
+                      <strong>{{ milestone.title }}</strong>
+                      <span>{{ milestone.deliverable }}</span>
+                    </button>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>Status</th>
+                  <td mat-cell *matCellDef="let milestone">
+                    <mat-chip [color]="badgeTone(milestone.status)" selected>{{ statusLabel(milestone.status) }}</mat-chip>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="amount">
+                  <th mat-header-cell *matHeaderCellDef>Amount</th>
+                  <td mat-cell *matCellDef="let milestone">{{ milestone.amount | currency:'USD':'symbol':'1.2-2' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="dueDate">
+                  <th mat-header-cell *matHeaderCellDef>Due</th>
+                  <td mat-cell *matCellDef="let milestone">{{ milestone.dueDate || 'TBD' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="updatedAt">
+                  <th mat-header-cell *matHeaderCellDef>Updated</th>
+                  <td mat-cell *matCellDef="let milestone">{{ (milestone.statusUpdatedAt || milestone.createdAt) | date:'mediumDate' }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Actions</th>
+                  <td mat-cell *matCellDef="let milestone">
+                    <div class="row-actions">
+                      <button mat-button type="button" (click)="startEdit(milestone)">Edit</button>
+                      <button mat-button type="button" (click)="selectMilestone(milestone)">Details</button>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns" [class.is-selected]="selectedMilestone?.id === row.id"></tr>
+              </table>
+            </div>
+
+            <mat-paginator
+              *ngIf="filteredMilestones.length"
+              [length]="filteredMilestones.length"
+              [pageIndex]="pageIndex"
+              [pageSize]="pageSize"
+              [pageSizeOptions]="pageSizeOptions"
+              (page)="onPageChange($event)">
+            </mat-paginator>
+          </section>
+
+          <aside class="detail-panel">
+            <ng-container *ngIf="composerOpen || selectedMilestone; else detailPlaceholder">
+              <section class="detail-card detail-card--form" *ngIf="composerOpen">
+                <div class="section-head section-head--compact">
+                  <div>
+                    <p class="eyebrow">Milestone editor</p>
+                    <h2>{{ editingId ? 'Edit milestone' : 'Create milestone' }}</h2>
+                  </div>
+                </div>
+
+                <form [formGroup]="form" class="composer-form">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Title</mat-label>
+                    <input matInput formControlName="title" />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Deliverable</mat-label>
+                    <textarea matInput rows="5" formControlName="deliverable"></textarea>
+                  </mat-form-field>
+
+                  <div class="two-up">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Amount</mat-label>
+                      <input matInput type="number" formControlName="amount" />
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Due date</mat-label>
+                      <input matInput [matDatepicker]="dueDatePicker" [min]="minDate" formControlName="dueDate" />
+                      <mat-datepicker-toggle matIconSuffix [for]="dueDatePicker"></mat-datepicker-toggle>
+                      <mat-datepicker #dueDatePicker></mat-datepicker>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="actions">
+                    <button mat-flat-button color="primary" type="button" (click)="save()" [disabled]="loading">
+                      {{ editingId ? 'Save changes' : 'Create milestone' }}
+                    </button>
+                    <button mat-stroked-button type="button" (click)="cancelEdit()">Cancel</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="detail-card" *ngIf="selectedMilestone as milestone">
+                <div class="detail-head">
+                  <div>
+                    <p class="eyebrow">Milestone details</p>
+                    <h2>{{ milestone.title }}</h2>
+                  </div>
+                  <mat-chip [color]="badgeTone(milestone.status)" selected>{{ statusLabel(milestone.status) }}</mat-chip>
+                </div>
+
+                <p class="detail-copy">{{ milestone.deliverable }}</p>
+
+                <div class="meta-grid">
+                  <div><span>Amount</span><strong>{{ milestone.amount | currency:'USD':'symbol':'1.2-2' }}</strong></div>
+                  <div><span>Due</span><strong>{{ milestone.dueDate || 'TBD' }}</strong></div>
+                  <div><span>Submitted</span><strong>{{ milestone.submittedAt ? (milestone.submittedAt | date:'short') : 'Not yet' }}</strong></div>
+                  <div><span>Revisions</span><strong>{{ milestone.revisionCount }}</strong></div>
+                </div>
+
+                <div class="workflow-note">
+                  <mat-icon>alt_route</mat-icon>
+                  <div>
+                    <strong>Next step</strong>
+                    <p>{{ nextStepLabel(milestone.status) }}</p>
+                  </div>
+                </div>
+
+                <div class="feedback-box" *ngIf="milestone.lastFeedback">
+                  <mat-icon>rate_review</mat-icon>
+                  <span>{{ milestone.lastFeedback }}</span>
+                </div>
+
+                <div class="actions">
+                  <button mat-stroked-button type="button" (click)="startEdit(milestone)">Edit</button>
+                  <button mat-flat-button color="primary" type="button" *ngIf="milestone.status === 'SUBMITTED'" (click)="approve(milestone)">Approve</button>
+                  <button mat-stroked-button color="warn" type="button" *ngIf="milestone.status === 'SUBMITTED'" (click)="revisionComposerFor = milestone.id; revisionFeedback = milestone.lastFeedback || ''">Request revision</button>
+                  <button mat-flat-button color="accent" type="button" *ngIf="milestone.status === 'APPROVED'" (click)="openPaymentSheet(milestone)">Fund milestone</button>
+                </div>
+
+                <div class="revision-box" *ngIf="revisionComposerFor === milestone.id">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Revision feedback</mat-label>
+                    <textarea matInput rows="3" [(ngModel)]="revisionFeedback"></textarea>
+                  </mat-form-field>
+                  <div class="actions">
+                    <button mat-flat-button color="warn" type="button" (click)="requestRevision(milestone)">Send request</button>
+                    <button mat-button type="button" (click)="clearRevisionComposer()">Cancel</button>
+                  </div>
+                </div>
+              </section>
+
+              <app-resources-panel
+                *ngIf="selectedMilestone"
+                [entityType]="'MILESTONE'"
+                [entityId]="selectedMilestone.id"
+                title="Milestone resources"
+                subtitle="Upload deliverables, references, and revision proof for this milestone.">
+              </app-resources-panel>
+            </ng-container>
+
+            <ng-template #detailPlaceholder>
+              <div class="detail-placeholder">
+                <mat-icon>checklist</mat-icon>
+                <p>Select a milestone to review its details, actions, and resources.</p>
+              </div>
+            </ng-template>
+          </aside>
+        </div>
+
+        <ng-template #emptyState>
+          <div class="empty-state">
+            <mat-icon>flag</mat-icon>
+            <p>{{ loading ? 'Loading milestones...' : 'No milestones yet. Create the first one for this contract.' }}</p>
+          </div>
+        </ng-template>
+      </mat-tab>
+
+      <mat-tab label="Payments">
+        <div class="tab-body">
+          <app-payment-history
+            [contractId]="contractId"
+            [refreshKey]="refreshHistoryKey"
+            [blockActions]="hasBlockingDispute"
+            blockReason="Payment release and refund actions are blocked while this contract has an open dispute."
+            (changed)="onPaymentActionCompleted()">
+          </app-payment-history>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Resources">
+        <div class="tab-body resources-stack">
+          <app-resources-panel
+            [entityType]="'CONTRACT'"
+            [entityId]="contractId"
+            title="Contract resources"
+            subtitle="Briefs, links, and references shared for the whole contract.">
+          </app-resources-panel>
+
+          <app-resources-panel
+            *ngIf="selectedMilestone"
+            [entityType]="'MILESTONE'"
+            [entityId]="selectedMilestone.id"
+            title="Selected milestone resources"
+            subtitle="Files and proof attached to the milestone currently in focus.">
+          </app-resources-panel>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-card>
+
+  <app-payment-client
+    [open]="paySheetOpen"
+    [contractId]="contractId"
+    [milestoneId]="selectedMilestone?.id ?? 0"
+    [amount]="selectedMilestone?.amount ?? 0"
+    [payerId]="payerId"
+    [payeeId]="payeeId"
+    (closed)="closePaymentSheet()"
+    (checkoutCreated)="onCheckoutCreated($event)">
+  </app-payment-client>
+
+  <app-contract-chat
+    [contractId]="contractId"
+    [senderId]="currentContract.clientId"
+    [senderRole]="'CLIENT'"
+    [senderName]="currentContract.clientName"
+    [receiverName]="currentContract.freelancerName"
+    [accentClass]="'client'">
+  </app-contract-chat>
+
+  <app-contract-call
+    [contractId]="contractId"
+    [displayName]="currentContract.clientName"
+    [senderId]="currentContract.clientId"
+    [senderRole]="'CLIENT'"
+    [receiverName]="currentContract.freelancerName"
+    [accentClass]="'client'">
+  </app-contract-call>
+</section>

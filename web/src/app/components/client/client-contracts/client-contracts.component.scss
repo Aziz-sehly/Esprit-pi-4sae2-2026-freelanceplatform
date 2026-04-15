@@ -1,0 +1,156 @@
+.contracts-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.hero {
+  padding: 1.8rem;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #10204f, #2a64d9 70%, #4cc2ad 130%);
+  color: white;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  opacity: 0.76;
+}
+
+h1, h2, h3 {
+  margin: 0;
+}
+
+.hero-copy {
+  margin: 1rem 0 0;
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.banner {
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  background: rgba(15, 157, 108, 0.12);
+  color: #0e6d50;
+}
+
+.banner.error {
+  background: rgba(209, 79, 93, 0.12);
+  color: #8b2231;
+}
+
+.contracts-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 1rem;
+}
+
+.composer-card,
+.summary-card,
+.contract-card {
+  border-radius: 28px;
+  background: linear-gradient(155deg, rgba(255,255,255,0.97), rgba(246,249,255,0.95));
+}
+
+.composer-card {
+  padding: 1.2rem;
+}
+
+.contract-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.two-up,
+.summary-card,
+.meta-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.two-up,
+.summary-card,
+.meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary-card {
+  padding: 1rem;
+}
+
+.summary-card span,
+.meta-grid span {
+  display: block;
+  color: #6d7393;
+  font-size: 0.8rem;
+}
+
+.summary-card strong,
+.meta-grid strong {
+  color: #0d1635;
+}
+
+.list-column,
+.contract-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.contract-card {
+  padding: 1rem;
+}
+
+.contract-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.contract-top p {
+  margin: 0.45rem 0 0;
+  color: #5f6580;
+}
+
+.meta-grid {
+  margin-top: 1rem;
+}
+
+.meta-grid div {
+  border-radius: 18px;
+  padding: 0.9rem;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.selected-freelancer {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.selected-freelancer span {
+  color: #6d7393;
+  font-size: 0.8rem;
+}
+
+.selected-freelancer strong {
+  color: #0d1635;
+}
+
+@media (max-width: 1100px) {
+  .contracts-grid,
+  .two-up,
+  .summary-card,
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

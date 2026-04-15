@@ -1,0 +1,87 @@
+<mat-card class="resources-card">
+  <div class="head">
+    <div>
+      <p class="eyebrow">Resources</p>
+      <h3>{{ title }}</h3>
+      <p class="subtitle">{{ subtitle }}</p>
+    </div>
+  </div>
+
+  <div *ngIf="banner" class="banner" [class.error]="bannerTone === 'error'">{{ banner }}</div>
+
+  <div class="composer-grid">
+    <div class="composer">
+      <h4>Add link</h4>
+      <form [formGroup]="linkForm" class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Label</mat-label>
+          <input matInput formControlName="label" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>URL</mat-label>
+          <input matInput formControlName="url" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select formControlName="category">
+            <mat-option *ngFor="let category of categories" [value]="category">{{ category }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-flat-button color="primary" type="button" (click)="createLink()" [disabled]="loading">Attach link</button>
+      </form>
+    </div>
+
+    <div class="composer">
+      <h4>Upload file</h4>
+      <form [formGroup]="fileForm" class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Label</mat-label>
+          <input matInput formControlName="label" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select formControlName="category">
+            <mat-option *ngFor="let category of categories" [value]="category">{{ category }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <label class="file-pick">
+          <input type="file" (change)="onFileSelected($event)" />
+          <span>{{ selectedFile?.name || 'Choose file' }}</span>
+        </label>
+        <button mat-stroked-button type="button" (click)="uploadFile()" [disabled]="loading">Upload file</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="resource-list" *ngIf="resources.length; else emptyState">
+    <article class="resource-item" *ngFor="let resource of resources">
+      <div class="resource-main">
+        <div class="resource-icon">
+          <mat-icon>{{ icon(resource) }}</mat-icon>
+        </div>
+        <div>
+          <h4>{{ resource.label }}</h4>
+          <p>{{ resource.category }} · {{ resource.createdAt | date:'short' }}</p>
+        </div>
+      </div>
+
+      <div class="resource-actions">
+        <a mat-stroked-button [href]="resourceUrl(resource)" target="_blank" rel="noreferrer">
+          {{ resource.resourceType === 'FILE' ? 'Download' : 'Open' }}
+        </a>
+        <button mat-icon-button type="button" *ngIf="allowDelete" (click)="delete(resource)" aria-label="Delete resource">
+          <svg class="resource-action-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 3h6l1 2h4v2H4V5h4zm1 6h2v8h-2zm4 0h2v8h-2zM7 9h2v8H7zm-1 12a2 2 0 0 1-2-2V8h16v11a2 2 0 0 1-2 2z" />
+          </svg>
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty-state">
+      <mat-icon>folder_open</mat-icon>
+      <p>No resources attached yet.</p>
+    </div>
+  </ng-template>
+</mat-card>

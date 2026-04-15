@@ -1,0 +1,92 @@
+<div class="shell">
+  <div class="shell-backdrop shell-backdrop-a"></div>
+  <div class="shell-backdrop shell-backdrop-b"></div>
+
+  <mat-toolbar class="shell-toolbar">
+    <div class="brand-lockup">
+      <a class="brand" routerLink="/">
+        <span class="brand-mark">T</span>
+        <span class="brand-copy">
+          <strong>Talently Flow</strong>
+          <small>Milestones, funding, release</small>
+        </span>
+      </a>
+    </div>
+
+    <nav class="shell-nav">
+      <a *ngFor="let item of navItems" [routerLink]="item.link" routerLinkActive="active">{{ item.label }}</a>
+    </nav>
+
+    <div class="toolbar-actions">
+      <div class="debug-pill">
+        <span>{{ currentRoute }}</span>
+        <strong>{{ authDebug }}</strong>
+      </div>
+
+      <button mat-stroked-button type="button" (click)="useClientPersona()">Client mode</button>
+      <button mat-stroked-button type="button" (click)="useFreelancerPersona()">Freelancer mode</button>
+
+      <button
+        mat-icon-button
+        class="notification-button"
+        [matMenuTriggerFor]="notificationsMenu"
+        [matBadge]="unreadCount"
+        [matBadgeHidden]="!unreadCount"
+        matBadgeColor="warn"
+        aria-label="Open notifications"
+        (click)="markNotificationsRead()">
+        <svg
+          class="notification-button__icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false">
+          <path
+            d="M12 3.75a4.25 4.25 0 0 0-4.25 4.25v1.05c0 .72-.18 1.42-.53 2.05l-1.1 1.98a2.25 2.25 0 0 0 1.97 3.34h8.82a2.25 2.25 0 0 0 1.97-3.34l-1.1-1.98a4.2 4.2 0 0 1-.53-2.05V8A4.25 4.25 0 0 0 12 3.75Zm0 17.5a2.74 2.74 0 0 0 2.55-1.75H9.45A2.74 2.74 0 0 0 12 21.25Z" />
+        </svg>
+      </button>
+
+      <ng-container *ngIf="authService.currentUser$ | async as user; else guestActions">
+        <a mat-stroked-button routerLink="/profile" class="profile-button">
+          <img [src]="user.profileImage || 'https://i.pravatar.cc/150?img=12'" [alt]="user.firstName" />
+          <span>{{ user.firstName }}</span>
+        </a>
+        <button mat-flat-button color="primary" (click)="logout()">Logout</button>
+      </ng-container>
+
+      <ng-template #guestActions>
+        <a mat-stroked-button routerLink="/login">Login</a>
+        <a mat-flat-button color="primary" routerLink="/register">Create account</a>
+      </ng-template>
+    </div>
+  </mat-toolbar>
+
+  <mat-menu #notificationsMenu="matMenu" panelClass="notifications-menu-panel">
+    <div class="notifications-menu__header">
+      <div class="notifications-menu__title-block">
+        <p>Notifications</p>
+        <span>Live updates</span>
+      </div>
+      <span class="notifications-menu__count">{{ unreadCount }} unread</span>
+    </div>
+    <mat-divider></mat-divider>
+    <ng-container *ngIf="notificationService.notifications$ | async as notifications">
+      <div class="notification-empty" *ngIf="notifications.length === 0">
+        Live payment and milestone notifications will appear here as events arrive.
+      </div>
+      <div *ngIf="notifications.length > 0" class="notifications-list">
+        <button
+          type="button"
+          *ngFor="let item of notifications | slice:0:8"
+          class="notifications-list__item"
+          (click)="openNotification(item)">
+          <span class="notifications-list__accent" aria-hidden="true"></span>
+          <p class="notifications-list__message">{{ item.message }}</p>
+        </button>
+      </div>
+    </ng-container>
+  </mat-menu>
+
+  <main class="shell-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

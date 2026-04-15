@@ -1,0 +1,60 @@
+<section class="contracts-shell">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Freelancer contracts</p>
+      <h1>Manage your contracts</h1>
+    </div>
+  </div>
+
+  <div *ngIf="banner" class="banner" [class.error]="bannerTone === 'error'">{{ banner }}</div>
+
+  <div class="contract-list">
+    <mat-card class="contract-card" *ngFor="let contract of contracts">
+      <div class="contract-top">
+        <div>
+          <h2>{{ contract.title }}</h2>
+          <p>{{ contract.scope }}</p>
+        </div>
+        <mat-chip [color]="chipColor(contract.status)" selected>{{ statusLabel(contract.status) }}</mat-chip>
+      </div>
+
+      <div class="meta-grid">
+        <div>
+          <span>Client</span>
+          <strong>{{ contract.clientName }}</strong>
+        </div>
+        <div>
+          <span>Budget</span>
+          <strong>{{ contract.totalBudget | currency:'USD':'symbol':'1.2-2' }}</strong>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          *ngIf="contract.status === 'PENDING_ACCEPTANCE'"
+          (click)="accept(contract)">
+          Accept
+        </button>
+        <button
+          mat-stroked-button
+          color="warn"
+          type="button"
+          *ngIf="contract.status === 'PENDING_ACCEPTANCE'"
+          (click)="reject(contract)">
+          Reject
+        </button>
+        <a
+          mat-flat-button
+          color="primary"
+          *ngIf="contract.status === 'ACTIVE'"
+          [routerLink]="['/freelancer/contracts', contract.id, 'workspace']">
+          Open workspace
+        </a>
+        <button mat-stroked-button type="button" disabled>Resources</button>
+      </div>
+    </mat-card>
+  </div>
+</section>
