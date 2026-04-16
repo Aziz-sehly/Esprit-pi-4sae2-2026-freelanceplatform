@@ -43,7 +43,7 @@ public class FileUploadController {
             String filename = UUID.randomUUID() + ext;
             Path target = dir.resolve(filename);
             file.transferTo(target);
-            String url = "/messages/attachments/" + filename;
+            String url = "/api/messages/attachments/" + filename;
             return ResponseEntity.ok(new UploadResponse(url, originalName));
         } catch (IOException e) {
             log.error("Upload failed: {}", e.getMessage(), e);
@@ -97,7 +97,7 @@ public class FileUploadController {
                 String filename = UUID.randomUUID() + ext;
                 Path target = dir.resolve(filename);
                 file.transferTo(target);
-                results.add(new UploadResponse("/messages/attachments/" + filename, originalName));
+                results.add(new UploadResponse("/api/messages/attachments/" + filename, originalName));
             }
             return ResponseEntity.ok(results);
         } catch (IOException e) {

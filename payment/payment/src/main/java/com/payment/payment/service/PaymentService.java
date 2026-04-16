@@ -2,6 +2,7 @@ package com.payment.payment.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.payment.payment.client.ContractClient;
 import com.payment.payment.client.MilestoneClient;
 import com.payment.payment.client.UserClient;
 import com.payment.payment.dto.CheckoutSessionResponse;
@@ -39,13 +40,14 @@ import java.util.List;
 @Transactional
 public class PaymentService {
 
-    private final PaymentRepository repo;
-    private final MilestoneClient milestoneClient;
-    private final UserClient userClient;
+    private final PaymentRepository     repo;
+    private final ContractClient        contractClient;   // ← replaces milestoneClient.getContract()
+    private final MilestoneClient       milestoneClient;
+    private final UserClient            userClient;
     private final SimpMessagingTemplate messagingTemplate;
-    private final ObjectMapper objectMapper;
-    private final JwtIdentityService jwtIdentityService;
-    private final PaymentEmailService paymentEmailService;
+    private final ObjectMapper          objectMapper;
+    private final JwtIdentityService    jwtIdentityService;
+    private final PaymentEmailService   paymentEmailService;
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -65,6 +67,8 @@ public class PaymentService {
             com.stripe.Stripe.apiKey = stripeSecretKey;
         }
     }
+
+    // ── Public API ────────────────────────────────────────────────────────────
 
     public PaymentResponse create(PaymentRequest req, String authorization) {
         ContractSummary contract = loadContract(req.contractId(), authorization);
@@ -87,13 +91,16 @@ public class PaymentService {
             payment.setProviderRef(payment.getStripeCheckoutSessionId());
             Payment saved = repo.save(payment);
             notify(saved, "PAYMENT_CHECKOUT_CREATED", "Stripe checkout session created");
-            return new CheckoutSessionResponse(payment.getId(), payment.getStripeCheckoutSessionId(), null);
+            return new CheckoutSessionResponse(
+                    payment.getId(), payment.getStripeCheckoutSessionId(), null);
         }
 
         try {
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setSuccessUrl(successUrl + "?paymentId=" + payment.getId() + "&session_id={CHECKOUT_SESSION_ID}")
+                    .setSuccessUrl(successUrl
+                            + "?paymentId=" + payment.getId()
+                            + "&session_id={CHECKOUT_SESSION_ID}")
                     .setCancelUrl(cancelUrl + "?paymentId=" + payment.getId())
                     .putMetadata("paymentId", String.valueOf(payment.getId()))
                     .addLineItem(
@@ -102,16 +109,16 @@ public class PaymentService {
                                     .setPriceData(
                                             SessionCreateParams.LineItem.PriceData.builder()
                                                     .setCurrency(payment.getCurrency())
-                                                    .setUnitAmount(payment.getAmount().movePointRight(2).longValueExact())
+                                                    .setUnitAmount(payment.getAmount()
+                                                            .movePointRight(2).longValueExact())
                                                     .setProductData(
-                                                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                                    .setName("Milestone payment #" + payment.getMilestoneId())
-                                                                    .build()
-                                                    )
-                                                    .build()
-                                    )
-                                    .build()
-                    )
+                                                            SessionCreateParams.LineItem.PriceData
+                                                                    .ProductData.builder()
+                                                                    .setName("Milestone payment #"
+                                                                            + payment.getMilestoneId())
+                                                                    .build())
+                                                    .build())
+                                    .build())
                     .build();
 
             Session session = Session.create(params);
@@ -121,8 +128,8 @@ public class PaymentService {
             payment.setProviderRef(session.getId());
             Payment saved = repo.save(payment);
             notify(saved, "PAYMENT_CHECKOUT_CREATED", "Stripe checkout session created");
-
             return new CheckoutSessionResponse(payment.getId(), session.getId(), session.getUrl());
+
         } catch (StripeException ex) {
             payment.setStatus(PaymentStatus.FAILED);
             repo.save(payment);
@@ -134,7 +141,9 @@ public class PaymentService {
     public PaymentResponse getById(Long id, String authorization) {
         Payment payment = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payment not found: " + id));
-        requireParticipant(loadContract(payment.getContractId(), authorization), jwtIdentityService.parseRequired(authorization));
+        requireParticipant(
+                loadContract(payment.getContractId(), authorization),
+                jwtIdentityService.parseRequired(authorization));
         return toResponse(payment);
     }
 
@@ -145,25 +154,28 @@ public class PaymentService {
         if (milestoneId != null) {
             List<Payment> payments = repo.findByMilestoneId(milestoneId);
             if (!payments.isEmpty()) {
-                requireParticipant(loadContract(payments.get(0).getContractId(), authorization), actor);
+                requireParticipant(
+                        loadContract(payments.get(0).getContractId(), authorization), actor);
             }
             return payments.stream().map(this::toResponse).toList();
         }
 
         if (contractId != null) {
-            requireParticipant(loadContract(contractId, authorization), actor);
+            // Load contract once, reuse for auth check — fixes N+1
+            ContractSummary contract = loadContract(contractId, authorization);
+            requireParticipant(contract, actor);
             return repo.findByContractId(contractId).stream().map(this::toResponse).toList();
         }
 
         if (actor.isClient()) {
             return repo.findAll().stream()
-                    .filter(payment -> payment.getPayerId().equals(actor.id()))
+                    .filter(p -> p.getPayerId().equals(actor.id()))
                     .map(this::toResponse)
                     .toList();
         }
 
         return repo.findAll().stream()
-                .filter(payment -> payment.getPayeeId().equals(actor.id()))
+                .filter(p -> p.getPayeeId().equals(actor.id()))
                 .map(this::toResponse)
                 .toList();
     }
@@ -178,13 +190,15 @@ public class PaymentService {
             if (!"checkout.session.completed".equals(event.getType())) {
                 return;
             }
-            JsonNode root = objectMapper.readTree(payload);
+
+            JsonNode root        = objectMapper.readTree(payload);
             JsonNode sessionNode = root.path("data").path("object");
             JsonNode metadataNode = sessionNode.path("metadata");
             JsonNode paymentIdNode = metadataNode.path("paymentId");
 
             if (paymentIdNode.isMissingNode() || paymentIdNode.asText().isBlank()) {
-                throw new IllegalStateException("Stripe webhook payload is missing metadata.paymentId");
+                throw new IllegalStateException(
+                        "Stripe webhook payload is missing metadata.paymentId");
             }
 
             Long paymentId = Long.valueOf(paymentIdNode.asText());
@@ -193,10 +207,14 @@ public class PaymentService {
 
             payment.setStatus(PaymentStatus.FUNDED);
             payment.setProvider("STRIPE");
-            payment.setProviderRef(sessionNode.path("id").asText(payment.getProviderRef()));
-            payment.setStripeCheckoutSessionId(sessionNode.path("id").asText(payment.getStripeCheckoutSessionId()));
-            payment.setStripePaymentIntentId(sessionNode.path("payment_intent").asText(payment.getStripePaymentIntentId()));
+            payment.setProviderRef(
+                    sessionNode.path("id").asText(payment.getProviderRef()));
+            payment.setStripeCheckoutSessionId(
+                    sessionNode.path("id").asText(payment.getStripeCheckoutSessionId()));
+            payment.setStripePaymentIntentId(
+                    sessionNode.path("payment_intent").asText(payment.getStripePaymentIntentId()));
             payment.setWebhookEventId(event.getId());
+
             Payment saved = repo.save(payment);
             notify(saved, "PAYMENT_FUNDED", "Payment funded successfully");
             sendFundingEmail(saved);
@@ -204,6 +222,7 @@ public class PaymentService {
             if (saved.getMilestoneId() != null) {
                 milestoneClient.markFunded(saved.getMilestoneId());
             }
+
         } catch (Exception ex) {
             throw new IllegalStateException("Invalid Stripe webhook payload");
         }
@@ -212,8 +231,12 @@ public class PaymentService {
     public PaymentResponse release(Long id, String authorization) {
         Payment payment = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payment not found: " + id));
-        requireClientOwner(loadContract(payment.getContractId(), authorization), jwtIdentityService.parseRequired(authorization));
-        if (payment.getStatus() != PaymentStatus.FUNDED && payment.getStatus() != PaymentStatus.RELEASED) {
+        requireClientOwner(
+                loadContract(payment.getContractId(), authorization),
+                jwtIdentityService.parseRequired(authorization));
+
+        if (payment.getStatus() != PaymentStatus.FUNDED
+                && payment.getStatus() != PaymentStatus.RELEASED) {
             throw new IllegalStateException("Only funded payments can be released");
         }
 
@@ -233,9 +256,14 @@ public class PaymentService {
     public PaymentResponse requestRefund(Long id, RefundRequest req, String authorization) {
         Payment payment = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payment not found: " + id));
-        requireClientOwner(loadContract(payment.getContractId(), authorization), jwtIdentityService.parseRequired(authorization));
-        if (payment.getStatus() != PaymentStatus.FUNDED && payment.getStatus() != PaymentStatus.RELEASED) {
-            throw new IllegalStateException("Only funded or released payments can enter refund flow");
+        requireClientOwner(
+                loadContract(payment.getContractId(), authorization),
+                jwtIdentityService.parseRequired(authorization));
+
+        if (payment.getStatus() != PaymentStatus.FUNDED
+                && payment.getStatus() != PaymentStatus.RELEASED) {
+            throw new IllegalStateException(
+                    "Only funded or released payments can enter refund flow");
         }
 
         payment.setStatus(PaymentStatus.REFUND_PENDING);
@@ -248,13 +276,30 @@ public class PaymentService {
     public void delete(Long id, String authorization) {
         Payment payment = repo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Payment not found: " + id));
-        requireClientOwner(loadContract(payment.getContractId(), authorization), jwtIdentityService.parseRequired(authorization));
+        requireClientOwner(
+                loadContract(payment.getContractId(), authorization),
+                jwtIdentityService.parseRequired(authorization));
         repo.deleteById(id);
     }
 
-    private Payment buildPayment(PaymentRequest req, ContractSummary contract, PaymentStatus status) {
-        BigDecimal fee = req.amount().multiply(new BigDecimal("0.05")).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal netAmount = req.amount().subtract(fee).setScale(2, RoundingMode.HALF_UP);
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Load contract from microservice-contract via ContractClient.
+     * Previously called milestoneClient.getContract() which routed to the wrong service.
+     */
+    private ContractSummary loadContract(Long contractId, String authorization) {
+        return contractClient.getContract(contractId, authorization);
+    }
+
+    private Payment buildPayment(PaymentRequest req, ContractSummary contract,
+                                 PaymentStatus status) {
+        BigDecimal fee = req.amount()
+                .multiply(new BigDecimal("0.05"))
+                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netAmount = req.amount()
+                .subtract(fee)
+                .setScale(2, RoundingMode.HALF_UP);
 
         return Payment.builder()
                 .contractId(req.contractId())
@@ -271,26 +316,17 @@ public class PaymentService {
                 .build();
     }
 
-    private ContractSummary loadContract(Long contractId, String authorization) {
-        return milestoneClient.getContract(contractId, authorization);
-    }
-
     private void requireClientOwner(ContractSummary contract, CurrentUser actor) {
         if (!actor.isClient() || !contract.clientId().equals(actor.id())) {
-            throw new IllegalStateException("Only the contract client can perform this payment action");
+            throw new IllegalStateException(
+                    "Only the contract client can perform this payment action");
         }
     }
 
     private void requireParticipant(ContractSummary contract, CurrentUser actor) {
-        if (actor.isAdmin()) {
-            return;
-        }
-        if (actor.isClient() && contract.clientId().equals(actor.id())) {
-            return;
-        }
-        if (actor.isFreelancer() && contract.freelancerId().equals(actor.id())) {
-            return;
-        }
+        if (actor.isAdmin()) return;
+        if (actor.isClient()     && contract.clientId().equals(actor.id()))     return;
+        if (actor.isFreelancer() && contract.freelancerId().equals(actor.id())) return;
         throw new IllegalStateException("You do not have access to these payments");
     }
 

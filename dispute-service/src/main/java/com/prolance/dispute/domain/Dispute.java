@@ -19,6 +19,9 @@ public class Dispute {
     @Column(nullable = false)
     private Long raisedByUserId;
 
+    /** Optional: other party / contact user id (manual entry; not validated against messaging). */
+    private Long contactUserId;
+
     private Long resolvedByUserId;
 
     @Column(nullable = false, length = 100)
@@ -66,6 +69,14 @@ public class Dispute {
 
     public void setRaisedByUserId(Long raisedByUserId) {
         this.raisedByUserId = raisedByUserId;
+    }
+
+    public Long getContactUserId() {
+        return contactUserId;
+    }
+
+    public void setContactUserId(Long contactUserId) {
+        this.contactUserId = contactUserId;
     }
 
     public Long getResolvedByUserId() {

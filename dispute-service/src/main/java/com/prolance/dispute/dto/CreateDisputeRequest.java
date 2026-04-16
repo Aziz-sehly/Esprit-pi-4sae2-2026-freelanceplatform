@@ -11,6 +11,9 @@ public class CreateDisputeRequest {
     /** Ignored on create: set from {@code X-User-Id} (gateway JWT). Optional in JSON for backward compatibility. */
     private Long raisedByUserId;
 
+    /** Optional: contact / counterparty user id (stored on dispute). */
+    private Long contactUserId;
+
     @NotBlank
     private String disputeType;
 
@@ -31,6 +34,14 @@ public class CreateDisputeRequest {
 
     public void setRaisedByUserId(Long raisedByUserId) {
         this.raisedByUserId = raisedByUserId;
+    }
+
+    public Long getContactUserId() {
+        return contactUserId;
+    }
+
+    public void setContactUserId(Long contactUserId) {
+        this.contactUserId = contactUserId;
     }
 
     public String getDisputeType() {

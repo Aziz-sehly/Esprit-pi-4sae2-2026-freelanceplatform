@@ -11,12 +11,13 @@ public class EvidenceDto {
     private String fileName;
     private String category;
     private String adminNote;
+    private Boolean adminLocked;
     private LocalDateTime createdAt;
 
     public EvidenceDto() {
     }
 
-    public EvidenceDto(Long id, Long disputeId, Long uploaderUserId, String fileUrl, String fileName, String category, String adminNote, LocalDateTime createdAt) {
+    public EvidenceDto(Long id, Long disputeId, Long uploaderUserId, String fileUrl, String fileName, String category, String adminNote, Boolean adminLocked, LocalDateTime createdAt) {
         this.id = id;
         this.disputeId = disputeId;
         this.uploaderUserId = uploaderUserId;
@@ -24,6 +25,7 @@ public class EvidenceDto {
         this.fileName = fileName;
         this.category = category;
         this.adminNote = adminNote;
+        this.adminLocked = adminLocked;
         this.createdAt = createdAt;
     }
 
@@ -81,6 +83,14 @@ public class EvidenceDto {
 
     public void setAdminNote(String adminNote) {
         this.adminNote = adminNote;
+    }
+
+    public Boolean getAdminLocked() {
+        return adminLocked;
+    }
+
+    public void setAdminLocked(Boolean adminLocked) {
+        this.adminLocked = adminLocked;
     }
 
     public LocalDateTime getCreatedAt() {

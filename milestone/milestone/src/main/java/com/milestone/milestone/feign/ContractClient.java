@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@FeignClient(name = "microservice-contract", url = "${contract.service.url}")
+@FeignClient(name = "microservice-contract", url = "${contract.service.url}",configuration = FeignClientConfig.class)
+
 public interface ContractClient {
 
     @GetMapping("/api/contracts/{id}")

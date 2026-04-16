@@ -1,5 +1,6 @@
 package com.milestone.milestone.controllers;
 
+import com.milestone.milestone.dto.MilestoneExtendRequest;
 import com.milestone.milestone.dto.MilestoneFeedbackRequest;
 import com.milestone.milestone.dto.MilestoneRequest;
 import com.milestone.milestone.dto.MilestoneResponse;
@@ -121,12 +122,7 @@ public class MilestoneController {
     @PatchMapping("/api/internal/milestones/{id}/extend")
     public MilestoneResponse extendInternal(
             @PathVariable Long id,
-            @RequestBody InternalExtendRequest req) {
+            @RequestBody MilestoneExtendRequest req) {
         return service.extendInternal(id, req);
     }
-
-    public record InternalExtendRequest(
-            LocalDate newDueDate,
-            BigDecimal newAmount    // null = keep existing amount
-    ) {}
 }

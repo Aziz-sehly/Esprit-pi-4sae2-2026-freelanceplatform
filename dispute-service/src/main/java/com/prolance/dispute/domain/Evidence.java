@@ -30,6 +30,10 @@ public class Evidence {
     @Column(length = 2000)
     private String adminNote;
 
+    /** Once reviewed/annotated by admin, uploader can no longer edit/delete this evidence. */
+    @Column(nullable = false)
+    private Boolean adminLocked = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -95,6 +99,14 @@ public class Evidence {
 
     public void setAdminNote(String adminNote) {
         this.adminNote = adminNote;
+    }
+
+    public Boolean getAdminLocked() {
+        return adminLocked;
+    }
+
+    public void setAdminLocked(Boolean adminLocked) {
+        this.adminLocked = adminLocked;
     }
 }
 

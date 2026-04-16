@@ -1,0 +1,154 @@
+.wrap {
+  font-family: 'DM Sans', sans-serif;
+  background: #f8f9fb;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.header {
+  max-width: 900px;
+  margin: 0 auto 1.25rem;
+
+  h1 {
+    margin: 0 0 0.25rem 0;
+    font-family: 'Syne', sans-serif;
+    color: #0a0e27;
+  }
+
+  p {
+    margin: 0;
+    color: #6b7280;
+    font-weight: 700;
+  }
+}
+
+.loading {
+  max-width: 900px;
+  margin: 0 auto;
+  color: #6b7280;
+}
+
+.cards {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+  padding: 1.25rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.row2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pill {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-weight: 900;
+  font-size: 0.8rem;
+
+  &.pending {
+    background: #fef3c7;
+    color: #d97706;
+  }
+
+  &.accepted {
+    background: #d1fae5;
+    color: #059669;
+  }
+
+  &.rejected {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+}
+
+.price {
+  font-weight: 1000;
+  color: #00d9ff;
+  font-size: 1.1rem;
+}
+
+.cover {
+  margin: 0.75rem 0;
+  color: #4b5563;
+  line-height: 1.65;
+}
+
+.muted {
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.link {
+  color: #00d9ff;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.2s, color 0.2s;
+
+  &.btn-accept {
+    background: #10b981;
+    color: #0f172a;
+    border-color: #10b981;
+    &:hover { background: #059669; border-color: #059669; }
+  }
+  &.btn-reject {
+    background: #ef4444;
+    color: #f1f5f9;
+    border-color: #ef4444;
+    &:hover { background: #dc2626; border-color: #dc2626; }
+  }
+  &.btn-cancel {
+    background: #f3f4f6;
+    color: #4b5563;
+    border-color: #e5e7eb;
+    &:hover { background: #e5e7eb; color: #374151; }
+  }
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-weight: 800;
+}

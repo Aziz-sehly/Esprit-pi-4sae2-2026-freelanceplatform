@@ -6,12 +6,15 @@ import com.payment.payment.model.PaymentMethod;
 import com.payment.payment.model.PaymentStatus;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Properties;
 
@@ -42,8 +45,9 @@ class PaymentEmailServiceTest {
         assertThat(mimeMessage.getAllRecipients()).hasSize(1);
         assertThat(mimeMessage.getAllRecipients()[0].toString()).isEqualTo("freelancer@test.com");
         assertThat(mimeMessage.getSubject()).isEqualTo("Your milestone payment has been secured");
-        assertThat(mimeMessage.getContent().toString()).contains("Payment secured for contract #9");
-        assertThat(mimeMessage.getContent().toString()).contains("Freelancer receives");
+        String html = htmlBody(mimeMessage);
+        assertThat(html).contains("Payment secured for contract #9");
+        assertThat(html).contains("Freelancer receives");
     }
 
     @Test
@@ -55,8 +59,9 @@ class PaymentEmailServiceTest {
 
         verify(mailSender).send(any(MimeMessage.class));
         assertThat(mimeMessage.getSubject()).isEqualTo("Your milestone payment has been released");
-        assertThat(mimeMessage.getContent().toString()).contains("Payment released for contract #9");
-        assertThat(mimeMessage.getContent().toString()).contains("Paid out amount");
+        String html = htmlBody(mimeMessage);
+        assertThat(html).contains("Payment released for contract #9");
+        assertThat(html).contains("Paid out amount");
     }
 
     @Test
@@ -67,6 +72,32 @@ class PaymentEmailServiceTest {
 
         verify(mailSender, never()).createMimeMessage();
         verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    /** Spring's MimeMessageHelper (multipart) wraps HTML; unwrap for assertions. */
+    private static String htmlBody(MimeMessage message) throws Exception {
+        return textFromMimeContent(message.getContent());
+    }
+
+    private static String textFromMimeContent(Object content) throws Exception {
+        if (content == null) {
+            return "";
+        }
+        if (content instanceof String str) {
+            return str;
+        }
+        if (content instanceof MimeMultipart mp) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < mp.getCount(); i++) {
+                var part = mp.getBodyPart(i);
+                sb.append(textFromMimeContent(part.getContent()));
+            }
+            return sb.toString();
+        }
+        if (content instanceof InputStream in) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        return "";
     }
 
     private UserSummary sampleFreelancer() {

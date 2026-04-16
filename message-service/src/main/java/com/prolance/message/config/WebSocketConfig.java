@@ -21,5 +21,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws/messages")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+        // STOMP brut (sans SockJS) pour les clients type @stomp/stompjs + brokerURL ws://...
+        registry.addEndpoint("/ws/messages-native")
+                .setAllowedOriginPatterns("*");
     }
 }

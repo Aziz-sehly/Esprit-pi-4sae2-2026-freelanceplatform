@@ -1,12 +1,14 @@
 package com.milestone.milestone.services;
 
 import com.milestone.milestone.controllers.MilestoneController.InternalMilestoneRequest;
+import com.milestone.milestone.dto.MilestoneExtendRequest;
 import com.milestone.milestone.dto.MilestoneFeedbackRequest;
 import com.milestone.milestone.dto.MilestoneRequest;
 import com.milestone.milestone.dto.MilestoneResponse;
 import com.milestone.milestone.dto.NotificationMessage;
 import com.milestone.milestone.exception.NotFoundException;
 import com.milestone.milestone.feign.ContractClient;
+import com.milestone.milestone.feign.DisputeClient;
 import com.milestone.milestone.models.Milestone;
 import com.milestone.milestone.models.MilestoneStatus;
 import com.milestone.milestone.repositories.MilestoneRepository;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class MilestoneService {
 
     private final MilestoneRepository    repo;
     private final ContractClient         contractClient;   // Feign — replaces ContractRepository
+    private final DisputeClient          disputeClient;
     private final SimpMessagingTemplate  messagingTemplate;
 
     // ── Internal creation — called by contract service after activation ────────
@@ -160,6 +164,8 @@ public class MilestoneService {
                 && milestone.getStatus() != MilestoneStatus.FUNDED)
             throw new IllegalStateException("Only approved milestones can be funded");
 
+        ensureNoBlockingDispute(milestone.getContractId());
+
         milestone.setStatus(MilestoneStatus.FUNDED);
         milestone.setFundedAt(LocalDateTime.now());
         touchStatus(milestone);
@@ -173,6 +179,8 @@ public class MilestoneService {
         if (milestone.getStatus() != MilestoneStatus.FUNDED
                 && milestone.getStatus() != MilestoneStatus.PAID)
             throw new IllegalStateException("Only funded milestones can be marked as paid");
+
+        ensureNoBlockingDispute(milestone.getContractId());
 
         milestone.setStatus(MilestoneStatus.PAID);
         milestone.setPaidAt(LocalDateTime.now());
@@ -230,6 +238,22 @@ public class MilestoneService {
                     message + ". Current status: " + milestone.getStatus());
     }
 
+    /** Bloque financement et paiement tant qu'un litige OPEN / IN_REVIEW existe sur le contrat. */
+    private void ensureNoBlockingDispute(Long contractId) {
+        try {
+            Map<String, Boolean> res = disputeClient.hasBlockingDispute(contractId);
+            if (Boolean.TRUE.equals(res != null ? res.get("blocking") : null)) {
+                throw new IllegalStateException(
+                        "Payment operations are blocked while a dispute is open or under review");
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Unable to verify dispute status for contract " + contractId, e);
+        }
+    }
+
     private void touchStatus(Milestone milestone) {
         milestone.setStatusUpdatedAt(LocalDateTime.now());
     }
@@ -259,8 +283,7 @@ public class MilestoneService {
     }
 
     // ── Internal: extend milestone due date and/or amount ─────────────────────
-    public MilestoneResponse extendInternal(Long id,
-                                            MilestoneController.InternalExtendRequest req) {
+    public MilestoneResponse extendInternal(Long id, MilestoneExtendRequest req) {
 
         Milestone milestone = findOrThrow(id);
 

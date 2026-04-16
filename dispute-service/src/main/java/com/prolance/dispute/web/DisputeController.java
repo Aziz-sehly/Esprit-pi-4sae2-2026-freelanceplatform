@@ -2,11 +2,14 @@ package com.prolance.dispute.web;
 
 import com.prolance.dispute.domain.Dispute;
 import com.prolance.dispute.domain.DisputeStatus;
+import com.prolance.dispute.dto.AdminDisputeRowDto;
 import com.prolance.dispute.dto.CreateDisputeRequest;
 import com.prolance.dispute.dto.DisputeDetailsResponse;
+import com.prolance.dispute.dto.DisputeInsightsResponse;
 import com.prolance.dispute.dto.EvidenceCreateRequest;
 import com.prolance.dispute.dto.EvidenceDto;
 import com.prolance.dispute.dto.EvidenceMetadataUpdateRequest;
+import com.prolance.dispute.dto.EvidenceUpdateRequest;
 import com.prolance.dispute.dto.ResolveDisputeRequest;
 import com.prolance.dispute.dto.UpdateDisputeRequest;
 import com.prolance.dispute.service.DisputeService;
@@ -14,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/disputes")
@@ -43,16 +47,29 @@ public class DisputeController {
             @RequestParam(required = false) DisputeStatus status,
             @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
     ) {
-        return disputeService.listForUser(contractId, status, userIdHeader);
+        if (contractId != null) {
+            return disputeService.listForContractParticipants(contractId, status, userIdHeader);
+        }
+        return disputeService.listForUser(null, status, userIdHeader);
     }
 
     /** Back-office: full list (gateway restricts to {@code ROLE_ADMIN}). */
     @GetMapping("/admin")
-    public List<Dispute> listAdmin(
+    public List<AdminDisputeRowDto> listAdmin(
             @RequestParam(required = false) Long contractId,
-            @RequestParam(required = false) DisputeStatus status
+            @RequestParam(required = false) DisputeStatus status,
+            @RequestParam(required = false, defaultValue = "created") String sort
     ) {
-        return disputeService.listAdmin(contractId, status);
+        return disputeService.listAdmin(contractId, status, sort);
+    }
+
+    /**
+     * Indique si le contrat a un litige bloquant les transitions de paiement (OPEN ou IN_REVIEW).
+     * Utilisé par milestone-service via Feign.
+     */
+    @GetMapping("/blocking")
+    public Map<String, Boolean> blocking(@RequestParam Long contractId) {
+        return Map.of("blocking", disputeService.hasBlockingDisputeForContract(contractId));
     }
 
     @GetMapping("/{id}")
@@ -83,6 +100,15 @@ public class DisputeController {
         return disputeService.getDetails(id, userIdHeader, rolesHeader);
     }
 
+    @GetMapping("/{id}/insights")
+    public DisputeInsightsResponse insights(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader
+    ) {
+        return disputeService.getInsights(id, userIdHeader, rolesHeader);
+    }
+
     @GetMapping("/{id}/evidence")
     public List<EvidenceDto> evidence(
             @PathVariable Long id,
@@ -107,9 +133,31 @@ public class DisputeController {
             @PathVariable Long disputeId,
             @PathVariable Long evidenceId,
             @Valid @RequestBody EvidenceMetadataUpdateRequest request,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader
+    ) {
+        return disputeService.adminUpdateEvidenceMetadata(disputeId, evidenceId, request, rolesHeader, userIdHeader);
+    }
+
+    @PutMapping("/{disputeId}/evidence/{evidenceId}")
+    public EvidenceDto updateEvidence(
+            @PathVariable Long disputeId,
+            @PathVariable Long evidenceId,
+            @Valid @RequestBody EvidenceUpdateRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
             @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader
     ) {
-        return disputeService.adminUpdateEvidenceMetadata(disputeId, evidenceId, request, rolesHeader);
+        return disputeService.updateEvidence(disputeId, evidenceId, request, userIdHeader, rolesHeader);
+    }
+
+    @DeleteMapping("/{disputeId}/evidence/{evidenceId}")
+    public void deleteEvidence(
+            @PathVariable Long disputeId,
+            @PathVariable Long evidenceId,
+            @RequestHeader(value = "X-User-Id", required = false) String userIdHeader,
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader
+    ) {
+        disputeService.deleteEvidence(disputeId, evidenceId, userIdHeader, rolesHeader);
     }
 
     @PutMapping("/{id}")

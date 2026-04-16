@@ -1,0 +1,58 @@
+<div class="wrap">
+  <div class="header">
+    <h1>My proposals</h1>
+    <p>Manage your proposals: edit or delete those pending.</p>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading...</div>
+
+  <div class="cards" *ngIf="!loading">
+    <div class="card" *ngFor="let p of proposals">
+      <div class="row">
+        <div>
+          <div class="muted">Project</div>
+          <a [routerLink]="['/front/projects', p.projectId]" class="link">View project</a>
+        </div>
+        <span class="pill" [class.pending]="p.status === 'PENDING'" [class.accepted]="p.status === 'ACCEPTED'">{{ p.status }}</span>
+      </div>
+
+      <div *ngIf="editingId !== p.id">
+        <div class="row2">
+          <div class="price">${{ p.proposedBudget }}</div>
+          <div class="muted">{{ p.estimatedDuration }}</div>
+        </div>
+        <p class="cover">{{ p.coverLetter }}</p>
+        <div class="muted small">Sent: {{ p.submittedAt | date: 'yyyy-MM-dd HH:mm' }}</div>
+
+        <div class="actions" *ngIf="canEditOrDelete(p)">
+          <button type="button" class="btn-edit" (click)="startEdit(p)">Edit</button>
+          <button type="button" class="btn-delete" (click)="delete(p.id)">Delete</button>
+        </div>
+      </div>
+
+      <div class="edit-form" *ngIf="editingId === p.id">
+        <label class="field">
+          <span>Proposed budget</span>
+          <input type="number" [(ngModel)]="editProposedBudget" />
+        </label>
+        <label class="field">
+          <span>Delivery time (days)</span>
+          <input type="number" min="1" [(ngModel)]="editDeliveryDays" />
+        </label>
+        <label class="field">
+          <span>Cover letter</span>
+          <textarea rows="6" [(ngModel)]="editCoverLetter"></textarea>
+        </label>
+        <div class="edit-actions">
+          <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="saving">{{ saving ? 'Saving...' : 'Save' }}</button>
+          <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty" *ngIf="proposals.length === 0">
+      No proposals. <a routerLink="/front/projects" class="link">Browse projects</a>
+    </div>
+  </div>
+</div>
+

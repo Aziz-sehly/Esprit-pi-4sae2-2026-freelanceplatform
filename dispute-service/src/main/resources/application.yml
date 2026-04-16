@@ -1,5 +1,6 @@
 server:
-  port: 8095
+  # Distinct de microservice_contract (8083) pour le dev local
+  port: 8087
 
 spring:
   application:
@@ -18,3 +19,61 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  dispute:
+    deadline-days: 7
+    deadline-check-ms: 60000
+    insights:
+      # Appels media-analysis-service (Eureka) pour scorer les preuves sur le contenu réel
+      media-analysis-enabled: true
+      sla:
+        typed-min-samples: 5
+        default-mean-hours: 120
+        default-variance-hours: 2304
+        min-std-hours: 12
+      escalation:
+        weight-age: 0.35
+        weight-sla: 0.30
+        weight-evidence-scarcity: 0.20
+        weight-churn: 0.15
+        age-scale-days: 14
+        evidence-cap: 5
+        churn-cap: 3
+        non-open-factor: 0.6
+      duplicate:
+        cosine-weight: 0.55
+        jaccard-weight: 0.45
+        same-type-bonus: 0.10
+        min-similarity: 0.45
+        max-candidates: 5
+      evidence-strength:
+        weight-media: 0.28
+        weight-integrity: 0.22
+        weight-category: 0.18
+        weight-recency: 0.20
+        weight-readability: 0.12
+        recency-half-life-days: 30
+        media-image-video-score: 1.0
+        media-other-score: 0.65
+        integrity-uuid-score: 1.0
+        integrity-fallback-score: 0.55
+        category-specific-score: 1.0
+        category-other-score: 0.65
+        strong-threshold: 0.80
+        medium-threshold: 0.60
+        readability-penalty-per-hit: 0.14
+        readability-max-penalty-hits: 4
+        readability-min-score: 0.22
+        readability-small-width-max: 420
+        readability-small-dimension-penalty: 0.12
+        readability-low-url-quality-threshold: 45
+        readability-low-url-quality-penalty: 0.10
+        readability-gif-penalty: 0.08
+        readability-intrinsic-blend-weight: 0.5
+      trust:
+        prior-alpha: 2.0
+        prior-beta: 2.0
+        confidence-prior-samples: 5.0

@@ -3,11 +3,9 @@ package com.milestone.milestone.services;
 import com.milestone.milestone.dto.ResourceLinkRequest;
 import com.milestone.milestone.dto.ResourceResponse;
 import com.milestone.milestone.exception.NotFoundException;
-import com.milestone.milestone.models.ContractStatus;
 import com.milestone.milestone.models.ResourceEntityType;
 import com.milestone.milestone.models.ResourceItem;
 import com.milestone.milestone.models.ResourceType;
-import com.milestone.milestone.repositories.ContractRepository;
 import com.milestone.milestone.repositories.MilestoneRepository;
 import com.milestone.milestone.repositories.ResourceItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +19,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,7 +33,6 @@ import java.util.UUID;
 public class ResourceService {
 
     private final ResourceItemRepository repo;
-    private final ContractRepository contractRepository;
     private final MilestoneRepository milestoneRepository;
 
     @Value("${app.uploads.root:uploads}")
@@ -147,15 +143,11 @@ public class ResourceService {
 
     private void ensureEntityExists(ResourceEntityType entityType, Long entityId) {
         switch (entityType) {
-            case CONTRACT -> {
-                var contract = contractRepository.findById(entityId)
-                        .orElseThrow(() -> new NotFoundException("Contract not found: " + entityId));
-                if (contract.getStatus() == ContractStatus.CANCELLED) {
-                    throw new IllegalStateException("Cannot manage resources on cancelled contracts");
-                }
-            }
             case MILESTONE -> milestoneRepository.findById(entityId)
                     .orElseThrow(() -> new NotFoundException("Milestone not found: " + entityId));
+            case CONTRACT -> {
+                // Contract lives in microservice-contract service, skip local DB validation
+            }
         }
     }
 
@@ -187,7 +179,9 @@ public class ResourceService {
                 item.getMimeType(),
                 item.getFileSize(),
                 item.getCreatedAt(),
-                item.getResourceType() == ResourceType.FILE ? "/milestone/api/resources/" + item.getId() + "/download" : null
+                item.getResourceType() == ResourceType.FILE
+                        ? "/milestone/api/resources/" + item.getId() + "/download"
+                        : null
         );
     }
 }

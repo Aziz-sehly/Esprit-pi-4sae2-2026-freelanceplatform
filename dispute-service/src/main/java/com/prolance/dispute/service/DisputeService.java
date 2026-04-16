@@ -1,15 +1,21 @@
 package com.prolance.dispute.service;
 
+import com.prolance.dispute.client.MediaAnalysisFeignClient;
 import com.prolance.dispute.client.MessageClient;
 import com.prolance.dispute.domain.Dispute;
 import com.prolance.dispute.domain.DisputeStatus;
 import com.prolance.dispute.domain.DisputeAuditEvent;
+import com.prolance.dispute.dto.AdminDisputeRowDto;
 import com.prolance.dispute.dto.CreateDisputeRequest;
 import com.prolance.dispute.dto.DisputeDetailsResponse;
+import com.prolance.dispute.dto.DisputeInsightsResponse;
 import com.prolance.dispute.dto.EvidenceCreateRequest;
 import com.prolance.dispute.dto.EvidenceDto;
 import com.prolance.dispute.dto.EvidenceMetadataUpdateRequest;
+import com.prolance.dispute.dto.EvidenceUpdateRequest;
 import com.prolance.dispute.dto.AuditEventDto;
+import com.prolance.dispute.dto.MediaEvidenceAnalysisRequestItem;
+import com.prolance.dispute.dto.MediaEvidenceAnalysisResult;
 import com.prolance.dispute.dto.MessageDto;
 import com.prolance.dispute.dto.ResolveDisputeRequest;
 import com.prolance.dispute.dto.UpdateDisputeRequest;
@@ -23,7 +29,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 @Service
 public class DisputeService {
@@ -57,15 +69,35 @@ public class DisputeService {
     private final MessageClient messageClient;
     private final EvidenceRepository evidenceRepository;
     private final DisputeAuditEventRepository auditRepo;
+    private final DisputeInsightsCalculator insightsCalculator;
+    private final MediaAnalysisFeignClient mediaAnalysisFeignClient;
+
+    @Value("${app.dispute.insights.media-analysis-enabled:true}")
+    private boolean mediaAnalysisEnabled;
 
     public DisputeService(DisputeRepository disputeRepository,
                            MessageClient messageClient,
                            EvidenceRepository evidenceRepository,
-                           DisputeAuditEventRepository auditRepo) {
+                           DisputeAuditEventRepository auditRepo,
+                           DisputeInsightsCalculator insightsCalculator,
+                           MediaAnalysisFeignClient mediaAnalysisFeignClient) {
         this.disputeRepository = disputeRepository;
         this.messageClient = messageClient;
         this.evidenceRepository = evidenceRepository;
         this.auditRepo = auditRepo;
+        this.insightsCalculator = insightsCalculator;
+        this.mediaAnalysisFeignClient = mediaAnalysisFeignClient;
+    }
+
+    /**
+     * Litiges encore actifs côté métier : pas résolus / rejetés.
+     */
+    public boolean hasBlockingDisputeForContract(Long contractId) {
+        if (contractId == null) {
+            return false;
+        }
+        return disputeRepository.existsByContractIdAndStatusIn(
+                contractId, EnumSet.of(DisputeStatus.OPEN, DisputeStatus.IN_REVIEW));
     }
 
     public Dispute create(CreateDisputeRequest request, String userIdHeader) {
@@ -73,6 +105,7 @@ public class DisputeService {
         Dispute dispute = new Dispute();
         dispute.setContractId(request.getContractId());
         dispute.setRaisedByUserId(caller);
+        dispute.setContactUserId(request.getContactUserId());
         dispute.setDisputeType(request.getDisputeType().trim());
         dispute.setReason(request.getReason().trim());
         dispute.setStatus(DisputeStatus.OPEN);
@@ -88,15 +121,62 @@ public class DisputeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dispute not found"));
     }
 
-    /** Full access (admin back-office): optional contract/status filters. */
-    public List<Dispute> listAdmin(Long contractId, DisputeStatus status) {
-        if (contractId != null) {
-            return disputeRepository.findByContractId(contractId);
+    /**
+     * Admin back-office list with optional filters and {@link AdminDisputeRowDto#getEscalationScore()}.
+     * {@code sort}: {@code escalation} (highest first) or default {@code created} (newest first).
+     */
+    public List<AdminDisputeRowDto> listAdmin(Long contractId, DisputeStatus status, String sort) {
+        List<Dispute> list;
+        if (contractId != null && status != null) {
+            list = disputeRepository.findByContractId(contractId).stream()
+                    .filter(d -> d.getStatus() == status)
+                    .toList();
+        } else if (contractId != null) {
+            list = disputeRepository.findByContractId(contractId);
+        } else if (status != null) {
+            list = disputeRepository.findByStatus(status);
+        } else {
+            list = disputeRepository.findAll();
         }
-        if (status != null) {
-            return disputeRepository.findByStatus(status);
+        if (list.isEmpty()) {
+            return List.of();
         }
-        return disputeRepository.findAll();
+        List<Long> ids = list.stream().map(Dispute::getId).toList();
+        Map<Long, Long> evCounts = toLongCountMap(evidenceRepository.countByDisputeIds(ids));
+        Map<Long, Long> upCounts = toLongCountMap(auditRepo.countUpdateEventsByDisputeIds(ids));
+
+        List<Dispute> history = disputeRepository.findByStatusIn(List.of(DisputeStatus.RESOLVED, DisputeStatus.REJECTED));
+        Map<String, DisputeInsightsCalculator.SlaDistribution> typed = insightsCalculator.buildTypedSlaDistributions(history);
+        DisputeInsightsCalculator.SlaDistribution global = insightsCalculator.buildGlobalSlaDistribution(history);
+
+        List<AdminDisputeRowDto> rows = new ArrayList<>(list.size());
+        for (Dispute d : list) {
+            double sla = insightsCalculator.slaBreachProbability(d, deadlineDays, typed, global);
+            int evc = evCounts.getOrDefault(d.getId(), 0L).intValue();
+            long upd = upCounts.getOrDefault(d.getId(), 0L);
+            double esc = insightsCalculator.escalationScore(d, evc, upd, sla);
+            rows.add(new AdminDisputeRowDto(d, round4(esc)));
+        }
+        Comparator<AdminDisputeRowDto> cmp;
+        if ("escalation".equalsIgnoreCase(sort)) {
+            cmp = Comparator.comparing(AdminDisputeRowDto::getEscalationScore, Comparator.nullsLast(Double::compareTo)).reversed();
+        } else {
+            cmp = Comparator.comparing((AdminDisputeRowDto r) -> r.getDispute().getCreatedAt(), Comparator.nullsLast(Comparator.naturalOrder())).reversed();
+        }
+        rows.sort(cmp);
+        return rows;
+    }
+
+    private static Map<Long, Long> toLongCountMap(List<Object[]> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> m = new HashMap<>();
+        for (Object[] o : rows) {
+            if (o == null || o.length < 2 || o[0] == null || o[1] == null) continue;
+            m.put(((Number) o[0]).longValue(), ((Number) o[1]).longValue());
+        }
+        return m;
     }
 
     /** End-user: only disputes raised by the caller (from {@code X-User-Id}). */
@@ -112,6 +192,25 @@ public class DisputeService {
             return disputeRepository.findByRaisedByUserIdAndStatusOrderByCreatedAtDesc(uid, status);
         }
         return disputeRepository.findByRaisedByUserIdOrderByCreatedAtDesc(uid);
+    }
+
+    /**
+     * Litiges d'un contrat visibles par les deux parties : auteur ou contact désigné à l'ouverture.
+     * Remplace l'ancienne liste « tout le contrat » côté milestone tout en restreignant l'accès.
+     */
+    public List<Dispute> listForContractParticipants(Long contractId, DisputeStatus status, String userIdHeader) {
+        Long uid = requireUserId(userIdHeader);
+        List<Dispute> list = disputeRepository.findByContractId(contractId);
+        Stream<Dispute> stream = list.stream();
+        if (status != null) {
+            stream = stream.filter(d -> d.getStatus() == status);
+        }
+        return stream
+                .filter(d -> uid.equals(d.getRaisedByUserId())
+                        || (d.getContactUserId() != null && uid.equals(d.getContactUserId())))
+                .sorted(Comparator.comparing(Dispute::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .reversed())
+                .toList();
     }
 
     public Dispute findByIdForViewer(Long id, String userIdHeader, String rolesHeader) {
@@ -163,6 +262,60 @@ public class DisputeService {
         return new DisputeDetailsResponse(dispute, relatedMessages);
     }
 
+    /** Advanced risk/scoring insights for a specific dispute. */
+    public DisputeInsightsResponse getInsights(Long disputeId, String userIdHeader, String rolesHeader) {
+        if (!isGlobalAdmin(rolesHeader)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can access advanced insights");
+        }
+        Dispute dispute = findByIdForViewer(disputeId, userIdHeader, rolesHeader);
+        List<com.prolance.dispute.domain.Evidence> evidences = evidenceRepository.findByDisputeIdOrderByCreatedAtDesc(disputeId);
+        List<DisputeAuditEvent> auditEvents = auditRepo.findByDisputeIdOrderByCreatedAtDesc(disputeId);
+        List<Dispute> history = disputeRepository.findByStatusIn(List.of(DisputeStatus.RESOLVED, DisputeStatus.REJECTED));
+        List<Dispute> sameContract = disputeRepository.findByContractId(dispute.getContractId());
+        List<Dispute> raiserHistory = disputeRepository.findByRaisedByUserIdOrderByCreatedAtDesc(dispute.getRaisedByUserId());
+        Map<Long, MediaEvidenceAnalysisResult> mediaByEvidence = fetchMediaAnalysis(evidences);
+        return insightsCalculator.buildInsights(dispute, evidences, auditEvents, history, sameContract, raiserHistory,
+                deadlineDays, mediaByEvidence);
+    }
+
+    private Map<Long, MediaEvidenceAnalysisResult> fetchMediaAnalysis(List<com.prolance.dispute.domain.Evidence> evidences) {
+        if (!mediaAnalysisEnabled || evidences == null || evidences.isEmpty()) {
+            return Map.of();
+        }
+        List<MediaEvidenceAnalysisRequestItem> req = new ArrayList<>();
+        for (com.prolance.dispute.domain.Evidence e : evidences) {
+            if (e.getFileUrl() == null || e.getFileUrl().isBlank()) {
+                continue;
+            }
+            MediaEvidenceAnalysisRequestItem it = new MediaEvidenceAnalysisRequestItem();
+            it.setEvidenceId(e.getId());
+            it.setResourcePath(e.getFileUrl().trim());
+            req.add(it);
+        }
+        if (req.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            List<MediaEvidenceAnalysisResult> results = mediaAnalysisFeignClient.analyzeBatch(req);
+            if (results == null || results.isEmpty()) {
+                return Map.of();
+            }
+            Map<Long, MediaEvidenceAnalysisResult> map = new HashMap<>();
+            for (MediaEvidenceAnalysisResult r : results) {
+                if (r != null && r.getEvidenceId() != null) {
+                    map.put(r.getEvidenceId(), r);
+                }
+            }
+            return map;
+        } catch (Exception ignored) {
+            return Map.of();
+        }
+    }
+
+    private static double round4(double x) {
+        return Math.round(x * 10000.0) / 10000.0;
+    }
+
     /** Evidence access is restricted by the same rule as dispute viewing. */
     public List<EvidenceDto> listEvidence(Long disputeId, String userIdHeader, String rolesHeader) {
         // Throws 403/404 if not allowed
@@ -177,6 +330,7 @@ public class DisputeService {
                         e.getCategory(),
                         // adminNote only for admin users
                         isGlobalAdmin(rolesHeader) ? e.getAdminNote() : null,
+                        Boolean.TRUE.equals(e.getAdminLocked()),
                         e.getCreatedAt()
                 ))
                 .toList();
@@ -196,6 +350,7 @@ public class DisputeService {
                 ? safe.getCategory().trim()
                 : "OTHER");
         evidence.setAdminNote(null);
+        evidence.setAdminLocked(false);
         evidence.setCreatedAt(LocalDateTime.now());
         com.prolance.dispute.domain.Evidence saved = evidenceRepository.save(evidence);
         recordAudit(saved.getDisputeId(), "EVIDENCE_ADDED", uploader,
@@ -207,7 +362,8 @@ public class DisputeService {
                 saved.getFileUrl(),
                 saved.getFileName(),
                 saved.getCategory(),
-                saved.getAdminNote(),
+                isGlobalAdmin(rolesHeader) ? saved.getAdminNote() : null,
+                Boolean.TRUE.equals(saved.getAdminLocked()),
                 saved.getCreatedAt()
         );
     }
@@ -215,10 +371,12 @@ public class DisputeService {
     public EvidenceDto adminUpdateEvidenceMetadata(Long disputeId,
                                                     Long evidenceId,
                                                     EvidenceMetadataUpdateRequest request,
-                                                    String rolesHeader) {
+                                                    String rolesHeader,
+                                                    String userIdHeader) {
         if (!isGlobalAdmin(rolesHeader)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ADMIN only");
         }
+        Long adminActor = requireUserId(userIdHeader);
 
         Dispute dispute = findById(disputeId);
 
@@ -232,11 +390,10 @@ public class DisputeService {
                 ? request.getCategory().trim()
                 : evidence.getCategory());
         evidence.setAdminNote(request.getAdminNote());
+        evidence.setAdminLocked(true);
         evidenceRepository.save(evidence);
 
-        // For admin actor, we can only log uploaderUserId if we don't have X-User-Id here.
-        // Controller provides rolesHeader only; keep actor null.
-        recordAudit(dispute.getId(), "EVIDENCE_METADATA_UPDATED", null,
+        recordAudit(dispute.getId(), "EVIDENCE_METADATA_UPDATED", adminActor,
                 "evidenceId=" + evidence.getId() + ", category=" + evidence.getCategory());
 
         return new EvidenceDto(
@@ -247,8 +404,76 @@ public class DisputeService {
                 evidence.getFileName(),
                 evidence.getCategory(),
                 evidence.getAdminNote(),
+                Boolean.TRUE.equals(evidence.getAdminLocked()),
                 evidence.getCreatedAt()
         );
+    }
+
+    public EvidenceDto updateEvidence(Long disputeId,
+                                      Long evidenceId,
+                                      EvidenceUpdateRequest request,
+                                      String userIdHeader,
+                                      String rolesHeader) {
+        Dispute dispute = findByIdForViewer(disputeId, userIdHeader, rolesHeader);
+        Long actor = requireUserId(userIdHeader);
+        boolean admin = isGlobalAdmin(rolesHeader);
+
+        com.prolance.dispute.domain.Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found"));
+        if (!evidence.getDisputeId().equals(dispute.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Evidence does not belong to dispute");
+        }
+        if (!admin && !actor.equals(evidence.getUploaderUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only uploader can update this evidence");
+        }
+        if (!admin && Boolean.TRUE.equals(evidence.getAdminLocked())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence locked after admin review");
+        }
+
+        if (request.getFileUrl() != null && !request.getFileUrl().isBlank()) {
+            evidence.setFileUrl(request.getFileUrl().trim());
+        }
+        if (request.getFileName() != null && !request.getFileName().isBlank()) {
+            evidence.setFileName(request.getFileName().trim());
+        }
+        if (request.getCategory() != null && !request.getCategory().isBlank()) {
+            evidence.setCategory(request.getCategory().trim());
+        }
+        com.prolance.dispute.domain.Evidence saved = evidenceRepository.save(evidence);
+        recordAudit(dispute.getId(), "EVIDENCE_UPDATED", actor, "evidenceId=" + saved.getId());
+        return new EvidenceDto(
+                saved.getId(),
+                saved.getDisputeId(),
+                saved.getUploaderUserId(),
+                saved.getFileUrl(),
+                saved.getFileName(),
+                saved.getCategory(),
+                admin ? saved.getAdminNote() : null,
+                Boolean.TRUE.equals(saved.getAdminLocked()),
+                saved.getCreatedAt()
+        );
+    }
+
+    public void deleteEvidence(Long disputeId, Long evidenceId, String userIdHeader, String rolesHeader) {
+        Dispute dispute = findByIdForViewer(disputeId, userIdHeader, rolesHeader);
+        Long actor = requireUserId(userIdHeader);
+        boolean admin = isGlobalAdmin(rolesHeader);
+
+        com.prolance.dispute.domain.Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found"));
+        if (!evidence.getDisputeId().equals(dispute.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Evidence does not belong to dispute");
+        }
+        boolean ownerOrUploader = actor.equals(evidence.getUploaderUserId()) || actor.equals(dispute.getRaisedByUserId());
+        if (!admin && !ownerOrUploader) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only uploader or dispute owner can delete this evidence");
+        }
+        if (!admin && Boolean.TRUE.equals(evidence.getAdminLocked())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence locked after admin review");
+        }
+
+        evidenceRepository.delete(evidence);
+        recordAudit(dispute.getId(), "EVIDENCE_DELETED", actor, "evidenceId=" + evidenceId);
     }
 
     /** User updates their own dispute (only when OPEN). {@code currentUserId} must match {@code X-User-Id}. */
@@ -276,8 +501,17 @@ public class DisputeService {
         Dispute dispute = findById(id);
         dispute.setDisputeType(request.getDisputeType().trim());
         dispute.setReason(request.getReason().trim());
+        if (Boolean.TRUE.equals(request.getRemoveDeadline())) {
+            dispute.setDeadlineAt(null);
+        } else if (request.getDeadlineAt() != null) {
+            if (request.getDeadlineAt().isBefore(dispute.getCreatedAt())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deadline cannot be before dispute creation time");
+            }
+            dispute.setDeadlineAt(request.getDeadlineAt());
+        }
         Dispute saved = disputeRepository.save(dispute);
-        recordAudit(saved.getId(), "DISPUTE_UPDATED_ADMIN", null, "reason updated");
+        String auditDetails = "type/reason updated; deadlineAt=" + saved.getDeadlineAt();
+        recordAudit(saved.getId(), "DISPUTE_UPDATED_ADMIN", null, auditDetails);
         return saved;
     }
 
@@ -307,7 +541,9 @@ public class DisputeService {
 
     public List<AuditEventDto> listAudit(Long disputeId, String userIdHeader, String rolesHeader) {
         findByIdForViewer(disputeId, userIdHeader, rolesHeader);
+        boolean admin = isGlobalAdmin(rolesHeader);
         return auditRepo.findByDisputeIdOrderByCreatedAtDesc(disputeId).stream()
+                .filter(ev -> admin || !"EVIDENCE_METADATA_UPDATED".equals(ev.getEventType()))
                 .map(ev -> new AuditEventDto(ev.getEventType(), ev.getActorUserId(), ev.getDetails(), ev.getCreatedAt()))
                 .toList();
     }

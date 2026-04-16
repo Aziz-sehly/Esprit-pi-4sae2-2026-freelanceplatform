@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,17 +31,20 @@ public class MessageService {
     private final UserDirectoryService userDirectoryService;
     private final MessageAdvancedService advancedService;
     private final CensorService censorService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     /** Comma-separated list in YAML / env; avoids fragile {@link List} binding on some setups. */
     @Value("${app.demo-user-ids:1,2,3,4,5,6,7,8,9,10}")
     private String demoUserIdsCsv;
 
     public MessageService(MessageRepository messageRepository, UserDirectoryService userDirectoryService,
-                          MessageAdvancedService advancedService, CensorService censorService) {
+                          MessageAdvancedService advancedService, CensorService censorService,
+                          SimpMessagingTemplate messagingTemplate) {
         this.messageRepository = messageRepository;
         this.userDirectoryService = userDirectoryService;
         this.advancedService = advancedService;
         this.censorService = censorService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public List<UserDto> getAllUsers(Long excludeUserId) {
@@ -146,6 +150,10 @@ public class MessageService {
         if (request.getContentType() != null) message.setContentType(request.getContentType());
         Message saved = messageRepository.save(message);
         advancedService.logAudit(saved.getId(), "CREATED", request.getSenderUserId(), null);
+        String topic = "/topic/conv/" + saved.getContractId() + "/"
+                + Math.min(saved.getSenderUserId(), saved.getReceiverUserId()) + "/"
+                + Math.max(saved.getSenderUserId(), saved.getReceiverUserId());
+        messagingTemplate.convertAndSend(topic, Map.of("type", "new_message", "message", saved));
         return saved;
     }
 
