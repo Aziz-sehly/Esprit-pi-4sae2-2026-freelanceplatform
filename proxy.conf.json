@@ -1,0 +1,4 @@
+{
+  "/project": {"target": "http://localhost:8765", "secure": false, "changeOrigin": true, "logLevel": "debug"},
+  "/proposal": {"target": "http://localhost:8765", "secure": false, "changeOrigin": true, "logLevel": "debug"}
+}

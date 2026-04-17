@@ -1,0 +1,45 @@
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-inner">
+      <div>
+        <h1>My projects</h1>
+        <p>Manage your projects as a client: create, edit or delete.</p>
+      </div>
+      <button class="primary" type="button" (click)="createNew()">+ New project</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div *ngIf="loading" class="loading">Loading...</div>
+
+    <div class="cards" *ngIf="!loading">
+      <article class="card" *ngFor="let p of projects" (click)="view(p.id)">
+        <div class="card-top">
+          <h3>{{ p.title }}</h3>
+          <div class="budget">
+            <span class="amount">${{ p.budgetMin }} - ${{ p.budgetMax }}</span>
+            <span class="pill">{{ p.status }}</span>
+          </div>
+        </div>
+        <p class="desc">{{ p.description }}</p>
+        <div class="skills">
+          <span class="tag" *ngFor="let s of p.skills.slice(0, 5)">{{ s }}</span>
+          <span class="tag more" *ngIf="p.skills.length > 5">+{{ p.skills.length - 5 }}</span>
+        </div>
+        <div class="bottom">
+          <span class="muted">Exp: {{ p.experienceLevel }}</span>
+          <span class="muted">Proposals: {{ p.proposalsCount ?? 0 }}</span>
+          <span class="muted">Deadline: {{ p.deadline | date: 'yyyy-MM-dd' }}</span>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn-edit" (click)="edit(p.id); $event.stopPropagation()">Edit</button>
+          <button type="button" class="btn-delete" (click)="delete(p.id, $event)">Delete</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="empty" *ngIf="!loading && projects.length === 0">
+      No projects. <a routerLink="/front/projects/new" class="link">Create a project</a>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,137 @@
+.contracts-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.hero {
+  padding: 1.8rem;
+  border-radius: 32px;
+  background: linear-gradient(140deg, #101b42, #19367a 58%, #0f9d6c 140%);
+  color: white;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  opacity: 0.76;
+}
+
+h1, h2 {
+  margin: 0;
+}
+
+.banner {
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  background: rgba(15, 157, 108, 0.12);
+  color: #0e6d50;
+}
+
+.banner.error {
+  background: rgba(209, 79, 93, 0.12);
+  color: #8b2231;
+}
+
+.contract-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.contract-card {
+  border-radius: 28px;
+  padding: 1rem;
+  background: linear-gradient(155deg, rgba(255,255,255,0.97), rgba(246,249,255,0.95));
+}
+
+.contract-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.contract-top p {
+  margin: 0.45rem 0 0;
+  color: #5f6580;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.meta-grid div {
+  border-radius: 18px;
+  padding: 0.9rem;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.meta-grid span {
+  display: block;
+  color: #6d7393;
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.milestones-preview {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(25, 54, 122, 0.06);
+  border: 1px solid rgba(25, 54, 122, 0.15);
+
+  h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: #19367a;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.82rem;
+    color: #1f2937;
+  }
+
+  li {
+    margin-bottom: 0.35rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: baseline;
+  }
+
+  .mt-title {
+    font-weight: 600;
+  }
+
+  .mt-status {
+    font-size: 0.72rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    background: #fff;
+    color: #4b5563;
+  }
+
+  .mt-amt {
+    font-size: 0.75rem;
+    color: #047857;
+  }
+}
+
+@media (max-width: 900px) {
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,143 @@
+<div class="wrap">
+  <div class="head">
+    <h1>Disputes</h1>
+    <p>Manage your contract-related disputes</p>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>Contrat</label>
+      <select [(ngModel)]="filterContractId" (change)="applyFilter()" class="filter-select">
+        <option [ngValue]="null">Tous les contrats</option>
+        <option *ngFor="let c of myContracts" [ngValue]="c.id">{{ c.title }} (#{{ c.id }})</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Statut</label>
+      <select [(ngModel)]="filterStatus" (change)="applyFilter()">
+        <option value="">Tous</option>
+        <option value="OPEN">Ouvert</option>
+        <option value="IN_REVIEW">En examen</option>
+        <option value="RESOLVED">Résolu</option>
+        <option value="REJECTED">Rejeté</option>
+      </select>
+    </div>
+    <button class="btn-filter" (click)="applyFilter()">Filtrer</button>
+    <button class="btn-create" type="button" (click)="toggleCreateForm()">
+      {{ showCreateForm ? 'Annuler' : '+ Nouveau litige' }}
+    </button>
+  </div>
+
+  <!-- Create form -->
+  <div class="create-form" *ngIf="showCreateForm">
+    <h3>Ouvrir un litige</h3>
+    <p class="hint" *ngIf="myContracts.length === 0">
+      Aucun contrat trouvé pour votre compte. Les litiges sont liés à un contrat client/freelance.
+    </p>
+    <div class="form-row">
+      <div class="field field-grow">
+        <label>Contrat concerné</label>
+        <select
+          [(ngModel)]="selectedContractForCreate"
+          (ngModelChange)="onCreateContractSelected()"
+          class="filter-select"
+        >
+          <option [ngValue]="null" disabled>— Choisir un contrat —</option>
+          <option *ngFor="let c of myContracts" [ngValue]="c.id">
+            {{ c.title }} — {{ getOtherPartyName(c) }} (#{{ c.id }})
+          </option>
+        </select>
+        <p class="hint" *ngIf="createForm.contractId > 0 && createForm.contactUserId">
+          Contrepartie (auto) : user #{{ createForm.contactUserId }}
+        </p>
+      </div>
+
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="createForm.disputeType">
+          <option value="QUALITY_ISSUE">Qualité</option>
+          <option value="PAYMENT_ISSUE">Paiement</option>
+          <option value="DELIVERY_ISSUE">Livraison</option>
+          <option value="OTHER">Autre</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea [(ngModel)]="createForm.reason" placeholder="Décrivez le problème…" rows="3"></textarea>
+    </div>
+    <button class="btn-submit" (click)="createDispute()" [disabled]="creating || myContracts.length === 0">
+      {{ creating ? 'Envoi…' : 'Créer le litige' }}
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    Loading disputes...
+  </div>
+
+  <!-- List -->
+  <div class="disputes-table" *ngIf="!loading">
+    <div class="row header">
+      <div>ID</div>
+      <div>Contract</div>
+      <div>Contact</div>
+      <div>Type</div>
+      <div>Status</div>
+      <div>Created</div>
+      <div>Action</div>
+    </div>
+    <div class="row" *ngFor="let d of disputes">
+      <div>#{{ d.id }}</div>
+      <div>{{ d.contractId }}</div>
+      <div>{{ d.contactUserId ?? '—' }}</div>
+      <div>{{ getDisputeTypeLabel(d.disputeType) }}</div>
+      <div>
+        <span class="status-badge" [class]="getStatusClass(d.status)">
+          {{ getStatusLabel(d.status) }}
+        </span>
+      </div>
+      <div>{{ formatDate(d.createdAt) }}</div>
+      <div class="actions-cell">
+        <a [routerLink]="['/front/disputes', d.id]" class="btn-view">Details</a>
+        <button *ngIf="canEdit(d)" type="button" class="btn-edit" (click)="startEdit(d)" title="Edit">✎</button>
+        <button *ngIf="canDelete(d)" type="button" class="btn-delete" (click)="deleteDispute(d)" title="Delete">×</button>
+      </div>
+    </div>
+    <div class="row empty" *ngIf="disputes.length === 0">
+      <div>No disputes found</div>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div *ngIf="editingDispute" class="modal-overlay" (click)="cancelEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Edit dispute #{{ editingDispute.id }}</h3>
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="editForm.disputeType">
+          <option value="QUALITY_ISSUE">Quality issue</option>
+          <option value="PAYMENT_ISSUE">Payment issue</option>
+          <option value="DELIVERY_ISSUE">Delivery issue</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <textarea [(ngModel)]="editForm.reason" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="updating || !(editForm.reason || '').trim()">
+          {{ updating ? '...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
