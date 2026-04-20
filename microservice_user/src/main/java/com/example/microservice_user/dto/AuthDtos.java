@@ -94,4 +94,51 @@ public class AuthDtos {
         private String portfolioUrl;
         private String companyName;
     }
+
+    // ── Admin Create User Request ─────────────────────────────────────
+    @Data
+    public static class AdminCreateUserRequest {
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
+        private String email;
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters")
+        private String password;
+
+        @NotBlank(message = "First name is required")
+        private String firstName;
+
+        @NotBlank(message = "Last name is required")
+        private String lastName;
+
+        @NotNull(message = "Role is required")
+        private Role role;
+
+        private String phoneNumber;
+        private String skills;
+        private String portfolioUrl;
+        private String companyName;
+        private Boolean isVerified;
+        private Boolean isActive;
+    }
+
+    // ── Admin Update User Request ─────────────────────────────────────
+    @Data
+    public static class AdminUpdateUserRequest {
+        @Email(message = "Invalid email format")
+        private String email;
+        private String password;
+        private String firstName;
+        private String lastName;
+        private Role role;
+        private String phoneNumber;
+        private String bio;
+        private String profilePicture;
+        private String skills;
+        private String portfolioUrl;
+        private String companyName;
+        private Boolean isVerified;
+        private Boolean isActive;
+    }
 }

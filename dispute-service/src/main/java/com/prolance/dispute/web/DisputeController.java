@@ -63,6 +63,14 @@ public class DisputeController {
         return disputeService.listAdmin(contractId, status, sort);
     }
 
+    /** One-shot admin maintenance endpoint to repair historical disputes with missing contactUserId. */
+    @PostMapping("/admin/backfill-contact-users")
+    public Map<String, Object> backfillContactUsers(
+            @RequestHeader(value = "X-User-Roles", required = false) String rolesHeader
+    ) {
+        return disputeService.backfillMissingContactUsers(rolesHeader);
+    }
+
     /**
      * Indique si le contrat a un litige bloquant les transitions de paiement (OPEN ou IN_REVIEW).
      * Utilisé par milestone-service via Feign.

@@ -314,8 +314,14 @@ public class MessageService {
     }
 
     @Transactional
-    public void deleteConversation(Long contractId) {
-        messageRepository.deleteByContractId(contractId);
+    public void deleteConversation(Long contractId, Long userId, Long otherUserId) {
+        if (contractId == null || userId == null || otherUserId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "contractId, userId and otherUserId are required");
+        }
+        if (userId.equals(otherUserId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Conversation participants must be different users");
+        }
+        messageRepository.deleteByContractAndUsers(contractId, userId, otherUserId);
     }
 
     public List<Message> getReplies(Long parentId) {

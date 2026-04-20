@@ -24,6 +24,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserDetailsService userDetailsService;
 
     @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String p = request.getRequestURI();
+        String ctx = request.getContextPath();
+        if (ctx != null && !ctx.isEmpty() && p.startsWith(ctx)) {
+            p = p.substring(ctx.length());
+        }
+        return p.startsWith("/api/auth/")
+                || p.startsWith("/microservice-user/api/auth/")
+                || p.startsWith("/api/users/public/")
+                || p.startsWith("/microservice-user/api/users/public/")
+                || p.startsWith("/actuator/")
+                || p.startsWith("/microservice-user/actuator/")
+                || p.equals("/error")
+                || p.startsWith("/error/");
+    }
+
+    @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,

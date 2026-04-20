@@ -146,7 +146,9 @@ public class MessageController {
     }
 
     @DeleteMapping("/conversations/{contractId}")
-    public void deleteConversation(@PathVariable Long contractId) {
-        messageService.deleteConversation(contractId);
+    public void deleteConversation(@PathVariable Long contractId,
+                                   @RequestParam Long userId,
+                                   @RequestParam Long otherUserId) {
+        messageService.deleteConversation(contractId, userId, otherUserId);
     }
 }

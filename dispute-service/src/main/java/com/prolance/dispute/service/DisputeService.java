@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -102,10 +103,14 @@ public class DisputeService {
 
     public Dispute create(CreateDisputeRequest request, String userIdHeader) {
         Long caller = requireUserId(userIdHeader);
+        Long contact = request.getContactUserId();
+        if (contact != null && contact.equals(caller)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "contactUserId cannot be the same as creator");
+        }
         Dispute dispute = new Dispute();
         dispute.setContractId(request.getContractId());
         dispute.setRaisedByUserId(caller);
-        dispute.setContactUserId(request.getContactUserId());
+        dispute.setContactUserId(contact);
         dispute.setDisputeType(request.getDisputeType().trim());
         dispute.setReason(request.getReason().trim());
         dispute.setStatus(DisputeStatus.OPEN);
@@ -179,19 +184,22 @@ public class DisputeService {
         return m;
     }
 
-    /** End-user: only disputes raised by the caller (from {@code X-User-Id}). */
+    /** End-user: disputes where caller is creator OR designated contact party. */
     public List<Dispute> listForUser(Long contractId, DisputeStatus status, String userIdHeader) {
         Long uid = requireUserId(userIdHeader);
-        if (contractId != null && status != null) {
-            return disputeRepository.findByRaisedByUserIdAndContractIdAndStatusOrderByCreatedAtDesc(uid, contractId, status);
-        }
+        Stream<Dispute> stream = disputeRepository.findAll().stream()
+                .filter(d -> uid.equals(d.getRaisedByUserId())
+                        || (d.getContactUserId() != null && uid.equals(d.getContactUserId())));
         if (contractId != null) {
-            return disputeRepository.findByRaisedByUserIdAndContractIdOrderByCreatedAtDesc(uid, contractId);
+            stream = stream.filter(d -> contractId.equals(d.getContractId()));
         }
         if (status != null) {
-            return disputeRepository.findByRaisedByUserIdAndStatusOrderByCreatedAtDesc(uid, status);
+            stream = stream.filter(d -> d.getStatus() == status);
         }
-        return disputeRepository.findByRaisedByUserIdOrderByCreatedAtDesc(uid);
+        return stream
+                .sorted(Comparator.comparing(Dispute::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .reversed())
+                .toList();
     }
 
     /**
@@ -213,6 +221,97 @@ public class DisputeService {
                 .toList();
     }
 
+    /**
+     * One-shot maintenance task: populate missing contactUserId using existing disputes
+     * from the same contract. Safe to run multiple times.
+     */
+    public Map<String, Object> backfillMissingContactUsers(String rolesHeader) {
+        if (!isGlobalAdmin(rolesHeader)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only administrators can run backfill");
+        }
+
+        List<Dispute> all = disputeRepository.findAll();
+        if (all.isEmpty()) {
+            return Map.of(
+                    "totalDisputes", 0,
+                    "missingBefore", 0,
+                    "updated", 0,
+                    "remainingMissing", 0
+            );
+        }
+
+        Map<Long, List<Dispute>> byContract = new HashMap<>();
+        for (Dispute d : all) {
+            if (d.getContractId() == null) continue;
+            byContract.computeIfAbsent(d.getContractId(), k -> new ArrayList<>()).add(d);
+        }
+
+        List<Dispute> changed = new ArrayList<>();
+        int missingBefore = 0;
+        for (Dispute d : all) {
+            if (d.getContactUserId() != null || d.getRaisedByUserId() == null || d.getContractId() == null) {
+                continue;
+            }
+            missingBefore++;
+            Long inferred = inferCounterpartyFromContractDisputes(d, byContract.getOrDefault(d.getContractId(), List.of()));
+            if (inferred != null && !inferred.equals(d.getRaisedByUserId())) {
+                d.setContactUserId(inferred);
+                changed.add(d);
+            }
+        }
+
+        if (!changed.isEmpty()) {
+            disputeRepository.saveAll(changed);
+            for (Dispute d : changed) {
+                recordAudit(d.getId(), "CONTACT_USER_BACKFILLED", null, "contactUserId=" + d.getContactUserId());
+            }
+        }
+
+        int remaining = 0;
+        for (Dispute d : disputeRepository.findAll()) {
+            if (d.getContactUserId() == null) remaining++;
+        }
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("totalDisputes", all.size());
+        res.put("missingBefore", missingBefore);
+        res.put("updated", changed.size());
+        res.put("remainingMissing", remaining);
+        return res;
+    }
+
+    private Long inferCounterpartyFromContractDisputes(Dispute target, List<Dispute> sameContract) {
+        Long raisedBy = target.getRaisedByUserId();
+        if (raisedBy == null) return null;
+
+        // Best case: same creator already has at least one dispute with explicit contact.
+        for (Dispute d : sameContract) {
+            if (d.getId().equals(target.getId())) continue;
+            if (!raisedBy.equals(d.getRaisedByUserId())) continue;
+            if (d.getContactUserId() != null && !d.getContactUserId().equals(raisedBy)) {
+                return d.getContactUserId();
+            }
+        }
+
+        // Next best: reverse relation exists (other side dispute points back to this creator).
+        for (Dispute d : sameContract) {
+            if (d.getId().equals(target.getId())) continue;
+            if (d.getContactUserId() == null) continue;
+            if (raisedBy.equals(d.getContactUserId()) && d.getRaisedByUserId() != null && !raisedBy.equals(d.getRaisedByUserId())) {
+                return d.getRaisedByUserId();
+            }
+        }
+
+        // Fallback: any explicit contact in same contract that differs from creator.
+        for (Dispute d : sameContract) {
+            if (d.getId().equals(target.getId())) continue;
+            if (d.getContactUserId() != null && !raisedBy.equals(d.getContactUserId())) {
+                return d.getContactUserId();
+            }
+        }
+        return null;
+    }
+
     public Dispute findByIdForViewer(Long id, String userIdHeader, String rolesHeader) {
         Dispute dispute = findById(id);
         dispute = autoEscalateIfDeadlineReached(dispute);
@@ -220,8 +319,13 @@ public class DisputeService {
             return dispute;
         }
         Long uid = requireUserId(userIdHeader);
-        if (!dispute.getRaisedByUserId().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own disputes");
+        boolean isCreator = dispute.getRaisedByUserId() != null && dispute.getRaisedByUserId().equals(uid);
+        boolean isContact = dispute.getContactUserId() != null && dispute.getContactUserId().equals(uid);
+        if (!isCreator && !isContact) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only dispute participants can access this dispute"
+            );
         }
         return dispute;
     }

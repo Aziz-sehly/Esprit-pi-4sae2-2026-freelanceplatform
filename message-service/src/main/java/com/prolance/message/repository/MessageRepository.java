@@ -29,6 +29,13 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Query("DELETE FROM Message m WHERE m.contractId = :contractId")
     void deleteByContractId(@Param("contractId") Long contractId);
 
+    @Modifying
+    @Query("DELETE FROM Message m WHERE m.contractId = :contractId AND " +
+           "((m.senderUserId = :userId1 AND m.receiverUserId = :userId2) OR (m.senderUserId = :userId2 AND m.receiverUserId = :userId1))")
+    void deleteByContractAndUsers(@Param("contractId") Long contractId,
+                                  @Param("userId1") Long userId1,
+                                  @Param("userId2") Long userId2);
+
     @Query("SELECT DISTINCT m.senderUserId FROM Message m")
     List<Long> findDistinctSenderIds();
 

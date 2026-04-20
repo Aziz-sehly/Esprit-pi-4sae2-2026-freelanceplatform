@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -27,6 +28,24 @@ public class UserController {
     @GetMapping("/public/email/{email}")
     public ResponseEntity<AuthDtos.UserResponse> getUserByEmail(@PathVariable String email) {
         return ResponseEntity.ok(userService.getUserByEmail(email));
+    }
+
+    // Public — list admins for chat/contact discovery
+    @GetMapping("/public/admins")
+    public ResponseEntity<List<AuthDtos.UserResponse>> getPublicAdmins() {
+        return ResponseEntity.ok(userService.getUsersByRole(Role.ADMIN));
+    }
+
+    // Public — list all users for chat/contact discovery
+    @GetMapping("/public/list")
+    public ResponseEntity<List<AuthDtos.UserResponse>> getPublicUsers(
+            @RequestParam(required = false) Long excludeUserId
+    ) {
+        List<AuthDtos.UserResponse> users = userService.getAllUsers();
+        if (excludeUserId != null) {
+            users = users.stream().filter(u -> u.getId() != null && !u.getId().equals(excludeUserId)).toList();
+        }
+        return ResponseEntity.ok(users);
     }
 
     // Authenticated — get own profile
@@ -68,6 +87,40 @@ public class UserController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<AuthDtos.UserResponse> toggleActive(@PathVariable Long id) {
         return ResponseEntity.ok(userService.toggleActive(id));
+    }
+
+    // Admin — create user manually
+    @PostMapping("/admin")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AuthDtos.UserResponse> createUserByAdmin(
+            @Valid @RequestBody AuthDtos.AdminCreateUserRequest request) {
+        return ResponseEntity.ok(userService.createUserByAdmin(request));
+    }
+
+    // Admin — update user manually
+    @PutMapping("/admin/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AuthDtos.UserResponse> updateUserByAdmin(
+            @PathVariable Long id,
+            @RequestBody AuthDtos.AdminUpdateUserRequest request) {
+        return ResponseEntity.ok(userService.updateUserByAdmin(id, request));
+    }
+
+    // Admin — verify/unverify user manually
+    @PatchMapping("/admin/{id}/verify")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AuthDtos.UserResponse> setVerifiedByAdmin(
+            @PathVariable Long id,
+            @RequestParam boolean verified) {
+        return ResponseEntity.ok(userService.setVerifiedByAdmin(id, verified));
+    }
+
+    // Admin — delete user
+    @DeleteMapping("/admin/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<Void> deleteUserByAdmin(@PathVariable Long id) {
+        userService.deleteUserByAdmin(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Helper — extract email from JWT (the subject)

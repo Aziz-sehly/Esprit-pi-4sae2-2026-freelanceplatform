@@ -6,6 +6,8 @@ import com.example.microservice_user.entity.enums.Role;
 import com.example.microservice_user.repository.UserRepository;
 import com.example.microservice_user.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -55,7 +59,14 @@ public class UserService {
                 .build();
 
         userRepository.save(user);
-        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationToken);
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationToken);
+        } catch (Exception ex) {
+            // Mailtrap quota / SMTP misconfig must not block signup or surface as an opaque 403 via /error.
+            log.warn("Verification email not sent for {}: {}", user.getEmail(), ex.toString());
+            return "Registration successful, but the verification email could not be sent. "
+                    + "You can still verify later if your administrator provides the link, or fix SMTP settings.";
+        }
 
         return "Registration successful. Please check your email to verify your account.";
     }
@@ -150,6 +161,86 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         user.setIsActive(!user.getIsActive());
         return toResponse(userRepository.save(user));
+    }
+
+    // ── Admin: Create User ────────────────────────────────────────────
+    public AuthDtos.UserResponse createUserByAdmin(AuthDtos.AdminCreateUserRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalStateException("Email already in use: " + request.getEmail());
+        }
+
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .role(request.getRole())
+                .phoneNumber(request.getPhoneNumber())
+                .skills(request.getSkills())
+                .portfolioUrl(request.getPortfolioUrl())
+                .companyName(request.getCompanyName())
+                .isVerified(request.getIsVerified() != null ? request.getIsVerified() : true)
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .verificationToken(null)
+                .verificationTokenExpiry(null)
+                .build();
+
+        return toResponse(userRepository.save(user));
+    }
+
+    // ── Admin: Update User ────────────────────────────────────────────
+    public AuthDtos.UserResponse updateUserByAdmin(Long id, AuthDtos.AdminUpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !request.getEmail().equalsIgnoreCase(user.getEmail())
+                && userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalStateException("Email already in use: " + request.getEmail());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) user.setEmail(request.getEmail().trim());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword().trim()));
+        }
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getRole() != null) user.setRole(request.getRole());
+        if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
+        if (request.getBio() != null) user.setBio(request.getBio());
+        if (request.getProfilePicture() != null) user.setProfilePicture(request.getProfilePicture());
+        if (request.getSkills() != null) user.setSkills(request.getSkills());
+        if (request.getPortfolioUrl() != null) user.setPortfolioUrl(request.getPortfolioUrl());
+        if (request.getCompanyName() != null) user.setCompanyName(request.getCompanyName());
+        if (request.getIsVerified() != null) {
+            user.setIsVerified(request.getIsVerified());
+            if (Boolean.TRUE.equals(request.getIsVerified())) {
+                user.setVerificationToken(null);
+                user.setVerificationTokenExpiry(null);
+            }
+        }
+        if (request.getIsActive() != null) user.setIsActive(request.getIsActive());
+
+        return toResponse(userRepository.save(user));
+    }
+
+    // ── Admin: Set User Verified Manually ─────────────────────────────
+    public AuthDtos.UserResponse setVerifiedByAdmin(Long id, boolean verified) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        user.setIsVerified(verified);
+        if (verified) {
+            user.setVerificationToken(null);
+            user.setVerificationTokenExpiry(null);
+        }
+        return toResponse(userRepository.save(user));
+    }
+
+    // ── Admin: Delete User ────────────────────────────────────────────
+    public void deleteUserByAdmin(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+        userRepository.delete(user);
     }
 
     // ── Map to Response ───────────────────────────────────────────────

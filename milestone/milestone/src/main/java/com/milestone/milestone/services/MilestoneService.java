@@ -55,6 +55,7 @@ public class MilestoneService {
     public MilestoneResponse create(MilestoneRequest req, CurrentUser actor) {
         ContractClient.ContractDto contract = ensureContractIsActive(req.contractId());
         requireClientOwner(contract, actor);
+        ensureNoBlockingDispute(req.contractId());
 
         Milestone milestone = Milestone.builder()
                 .contractId(req.contractId())
@@ -87,6 +88,7 @@ public class MilestoneService {
     public MilestoneResponse update(Long id, MilestoneRequest req, CurrentUser actor) {
         ContractClient.ContractDto contract = ensureContractIsActive(req.contractId());
         requireClientOwner(contract, actor);
+        ensureNoBlockingDispute(req.contractId());
 
         Milestone milestone = findOrThrow(id);
         milestone.setContractId(req.contractId());
@@ -102,12 +104,14 @@ public class MilestoneService {
     public void delete(Long id, CurrentUser actor) {
         Milestone milestone = findOrThrow(id);
         requireClientOwner(loadContract(milestone.getContractId()), actor);
+        ensureNoBlockingDispute(milestone.getContractId());
         repo.deleteById(id);
     }
 
     public MilestoneResponse submit(Long id, CurrentUser actor) {
         Milestone milestone = findOrThrow(id);
         requireFreelancerOwner(loadContract(milestone.getContractId()), actor);
+        ensureNoBlockingDispute(milestone.getContractId());
 
         if (milestone.getStatus() == MilestoneStatus.PAID
                 || milestone.getStatus() == MilestoneStatus.APPROVED
@@ -128,6 +132,7 @@ public class MilestoneService {
                                              CurrentUser actor) {
         Milestone milestone = findOrThrow(id);
         requireClientOwner(loadContract(milestone.getContractId()), actor);
+        ensureNoBlockingDispute(milestone.getContractId());
         requireStatus(milestone, MilestoneStatus.SUBMITTED,
                 "Only submitted milestones can request revision");
 
@@ -147,6 +152,7 @@ public class MilestoneService {
     public MilestoneResponse approve(Long id, CurrentUser actor) {
         Milestone milestone = findOrThrow(id);
         requireClientOwner(loadContract(milestone.getContractId()), actor);
+        ensureNoBlockingDispute(milestone.getContractId());
         requireStatus(milestone, MilestoneStatus.SUBMITTED,
                 "Only submitted milestones can be approved");
 
@@ -286,6 +292,7 @@ public class MilestoneService {
     public MilestoneResponse extendInternal(Long id, MilestoneExtendRequest req) {
 
         Milestone milestone = findOrThrow(id);
+        ensureNoBlockingDispute(milestone.getContractId());
 
         if (req.newDueDate() != null)
             milestone.setDueDate(req.newDueDate());
