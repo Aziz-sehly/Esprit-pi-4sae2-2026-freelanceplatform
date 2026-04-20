@@ -566,6 +566,22 @@
   display: none;
 }
 
+.audio-input-select {
+  flex-shrink: 0;
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 10px;
+  color: #0f172a;
+  font-size: 0.82rem;
+  padding: 0 0.5rem;
+  max-width: 180px;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
 .btn-attach {
   flex-shrink: 0;
   width: 40px;
@@ -786,6 +802,16 @@
   max-width: 250px;
   margin-top: 0.25rem;
   height: 36px;
+}
+.audio-debug-row {
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.audio-debug-mime {
+  opacity: 0.8;
 }
 .msg-attachment-preview {
   max-width: 200px;

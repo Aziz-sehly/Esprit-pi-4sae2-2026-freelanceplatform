@@ -122,7 +122,7 @@
 
         <div class="messages-area">
           <div
-            *ngFor="let m of messagesFiltered"
+            *ngFor="let m of messagesFiltered; trackBy: trackMessageById"
             class="message-bubble"
             [class.sent]="isFromMe(m)"
             [class.received]="!isFromMe(m)"
@@ -141,7 +141,23 @@
                 </span>
                 <div *ngIf="m.attachmentUrl" class="msg-attachment-wrap">
                   <img *ngIf="getAttachmentPreviewUrl(m)" [src]="getAttachmentPreviewUrl(m)" class="msg-attachment-preview" (click)="openAttachment(m.attachmentUrl)" alt="Preview" />
-                  <audio *ngIf="getAudioPreviewUrl(m)" [src]="getAudioPreviewUrl(m)" controls class="msg-audio-preview"></audio>
+                  <audio
+                    *ngIf="getAudioPreviewUrl(m)"
+                    [src]="getAudioPreviewUrl(m)"
+                    controls
+                    preload="metadata"
+                    playsinline
+                    (play)="onAudioPlay()"
+                    (pause)="onAudioStop()"
+                    (ended)="onAudioStop()"
+                    class="msg-audio-preview"
+                  ></audio>
+                  <div *ngIf="getAudioPreviewUrl(m)" class="audio-debug-row">
+                    <small class="audio-debug-mime">Audio format: {{ getAudioMimeLabel(m) }}</small>
+                    <button type="button" class="msg-attachment" (click)="downloadAttachment(m.attachmentUrl, m.attachmentFileName)">
+                      Download audio
+                    </button>
+                  </div>
                   <button *ngIf="!getAttachmentPreviewUrl(m) && !getAudioPreviewUrl(m)" type="button" class="msg-attachment" (click)="openAttachment(m.attachmentUrl)">
                     {{ m.attachmentFileName || 'Attachment' }}
                   </button>
@@ -277,6 +293,17 @@
               multiple
               (change)="onFileSelected($event)"
             />
+            <select
+              class="audio-input-select"
+              [(ngModel)]="selectedAudioInputId"
+              [disabled]="recording || blockedByThem"
+              title="Microphone input"
+            >
+              <option value="">Default mic</option>
+              <option *ngFor="let d of audioInputDevices" [value]="d.deviceId">
+                {{ d.label || ('Microphone ' + d.deviceId.slice(0, 6)) }}
+              </option>
+            </select>
             <button type="button" class="btn-attach" (click)="fileInput.click()" [disabled]="uploading || blockedByThem" title="Attach file(s)">
               {{ uploading ? '...' : '📎' }}
             </button>

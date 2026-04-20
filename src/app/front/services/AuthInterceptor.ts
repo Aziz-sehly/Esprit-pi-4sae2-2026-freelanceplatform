@@ -27,14 +27,28 @@ export class AuthInterceptor implements HttpInterceptor {
     const url = req.url;
     const isApi =
       url.startsWith(environment.gatewayBaseUrl) ||
+      url.startsWith('/microservice-user') ||
+      url.startsWith('/microservice-contract') ||
+      url.startsWith('/milestone-service') ||
+      url.startsWith('/payment-service') ||
+      url.startsWith('/dispute-service') ||
+      url.startsWith('/message-service') ||
+      url.startsWith('/media-analysis-service') ||
       url.startsWith(environment.contractApiBase) ||
       url.startsWith(environment.milestoneApiBase) ||
       url.startsWith(environment.paymentApiBase) ||
       url.startsWith(environment.milestonePublicOrigin) ||
       url.startsWith(environment.disputeApiBase) ||
-      url.startsWith(environment.messageApiBase);
+      url.startsWith(environment.messageApiBase) ||
+      url.startsWith(environment.mediaAnalysisApiBase);
 
-    if (token && isApi) {
+    /** Ne pas envoyer un JWT expiré sur login/register (évite refus côté sécurité / proxies). */
+    const isPublicUserAuth =
+      url.includes('/api/auth/register') ||
+      url.includes('/api/auth/login') ||
+      url.includes('/api/auth/verify-email');
+
+    if (token && isApi && !isPublicUserAuth) {
       const headers: { [key: string]: string } = {
         Authorization: `Bearer ${token}`,
       };

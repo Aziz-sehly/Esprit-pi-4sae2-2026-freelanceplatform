@@ -159,8 +159,15 @@ export class MessagePlatformService {
     );
   }
 
-  deleteConversation(contractId: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/conversations/${contractId}`).pipe(
+  deleteConversation(contractId: number, userId: number, otherUserId: number): Observable<void> {
+    return this.http
+      .delete<void>(`${this.baseUrl}/conversations/${contractId}`, {
+        params: {
+          userId: String(userId),
+          otherUserId: String(otherUserId),
+        },
+      })
+      .pipe(
       catchError((err) => {
         console.error('MessagePlatformService.deleteConversation:', err);
         throw err;
@@ -304,13 +311,56 @@ export class MessagePlatformService {
   }
 
   getAttachment(url: string): Observable<Blob> {
-    const path = url.startsWith('/') ? url : `/${url}`;
-    const fullUrl = path.startsWith('http') ? path : `${environment.messageApiBase}${path}`;
-    return this.http.get(fullUrl, { responseType: 'blob' }).pipe(
-      catchError((err) => {
-        console.error('MessagePlatformService.getAttachment:', err);
-        throw err;
-      }),
-    );
+    const normalized = this.normalizeAttachmentUrl(url);
+    const fullUrl = normalized.startsWith('http') ? normalized : `${environment.messageApiBase}${normalized}`;
+    return this.http.get(fullUrl, { responseType: 'blob' });
+  }
+
+  private normalizeAttachmentUrl(url: string): string {
+    const raw = (url || '').trim();
+    if (!raw) return raw;
+
+    // Legacy attachment URLs may be stored as:
+    // - /messages/attachments/{id}
+    // - /uploads/{id}
+    // while the current endpoint is /api/messages/attachments/{id}.
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const parsed = new URL(raw);
+        let p = parsed.pathname;
+        if (p.startsWith('/message-service/messages/attachments/')) {
+          p = p.replace('/message-service/messages/attachments/', '/api/messages/attachments/');
+        } else if (p.startsWith('/message-service/uploads/')) {
+          p = p.replace('/message-service/uploads/', '/api/messages/attachments/');
+        } else if (p.startsWith('/messages/attachments/')) {
+          p = p.replace('/messages/attachments/', '/api/messages/attachments/');
+        } else if (p.startsWith('/uploads/')) {
+          p = p.replace('/uploads/', '/api/messages/attachments/');
+        } else if (p.startsWith('/message-service/api/messages/attachments/')) {
+          p = p.replace('/message-service/api/messages/attachments/', '/api/messages/attachments/');
+        }
+        return `${parsed.origin}${p}${parsed.search}`;
+      } catch {
+        return raw;
+      }
+    }
+
+    const path = raw.startsWith('/') ? raw : `/${raw}`;
+    if (path.startsWith('/message-service/messages/attachments/')) {
+      return path.replace('/message-service/messages/attachments/', '/api/messages/attachments/');
+    }
+    if (path.startsWith('/message-service/uploads/')) {
+      return path.replace('/message-service/uploads/', '/api/messages/attachments/');
+    }
+    if (path.startsWith('/messages/attachments/')) {
+      return path.replace('/messages/attachments/', '/api/messages/attachments/');
+    }
+    if (path.startsWith('/uploads/')) {
+      return path.replace('/uploads/', '/api/messages/attachments/');
+    }
+    if (path.startsWith('/message-service/api/messages/attachments/')) {
+      return path.replace('/message-service/api/messages/attachments/', '/api/messages/attachments/');
+    }
+    return path;
   }
 }

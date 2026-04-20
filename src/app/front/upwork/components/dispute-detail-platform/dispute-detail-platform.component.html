@@ -110,8 +110,8 @@
           <a
             class="chip"
             *ngFor="let d of insights?.duplicateCandidates"
-            [routerLink]="['/front/disputes', d.disputeId]"
-            [queryParams]="isAdmin ? { admin: true } : null"
+            [routerLink]="disputeLinkSegments(d.disputeId)"
+            [queryParams]="disputeLinkQueryParams()"
           >
             #{{ d.disputeId }} · {{ asPercent(d.similarity) }}
           </a>
@@ -125,6 +125,45 @@
             Evidence {{ e.evidenceId }} · {{ asPercent(e.score) }} · {{ e.label }} · {{ evidenceLabelDescription(e.label) }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <div class="card media-analysis-card" *ngIf="isAdmin && !showEditForm && evidences?.length">
+      <h3>Media analysis (technical)</h3>
+      <p class="muted">
+        Batch inspection via <code>media-analysis-service</code> (dimensions, PDF pages, intrinsic quality score).
+      </p>
+      <button type="button" class="btn-save" (click)="runMediaAnalysis()" [disabled]="mediaAnalysisLoading">
+        {{ mediaAnalysisLoading ? 'Analyzing…' : 'Run analysis on all evidence files' }}
+      </button>
+      <div *ngIf="mediaAnalysisResults?.length" class="media-analysis-table-wrap">
+        <table class="media-analysis-table">
+          <thead>
+            <tr>
+              <th>Evidence</th>
+              <th>Type</th>
+              <th>Size</th>
+              <th>Details</th>
+              <th>Quality</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of mediaAnalysisResults">
+              <td>#{{ r.evidenceId }}</td>
+              <td>{{ r.mediaType || '—' }}</td>
+              <td>{{ formatBytes(r.fileSizeBytes) }}</td>
+              <td>
+                <span *ngIf="r.width != null && r.height != null">{{ r.width }}×{{ r.height }}</span>
+                <span *ngIf="r.pdfPageCount != null"> · {{ r.pdfPageCount }} pdf pages</span>
+                <span *ngIf="r.textSampleChars != null"> · {{ r.textSampleChars }} text chars</span>
+                <span *ngIf="r.width == null && r.pdfPageCount == null && r.textSampleChars == null">—</span>
+              </td>
+              <td>{{ r.intrinsicQualityScore != null ? asPercent(r.intrinsicQualityScore) : '—' }}</td>
+              <td class="err-cell">{{ r.error || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

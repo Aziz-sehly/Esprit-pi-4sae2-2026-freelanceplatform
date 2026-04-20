@@ -397,7 +397,9 @@ export class LoginComponent {
         }
 
         // Default redirect based on role
-        if (user.role === 'FREELANCER') {
+        if (user.role === 'ADMIN') {
+          this.router.navigate(['/back/admin-projects']);
+        } else if (user.role === 'FREELANCER') {
           this.router.navigate(['/front/profile-freelancer']);
         } else if (user.role === 'CLIENT') {
           this.router.navigate(['/front/profile-client']);

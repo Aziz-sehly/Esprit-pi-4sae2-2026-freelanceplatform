@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DisputePlatformService } from '../../services/dispute-platform.service';
 import { Contract, ContractService } from '../../../services/Contract.service';
 import { AuthService } from '../../../services/auth.service';
@@ -33,6 +33,8 @@ export class DisputesPlatformComponent implements OnInit {
 
   /** Contrats de l’utilisateur (sélection auto de l’autre partie). */
   myContracts: Contract[] = [];
+  /** Contact auto-dérivé depuis les litiges déjà chargés: contractId -> contactUserId */
+  private contractContactById: Record<number, number> = {};
   userNameCache: Record<number, string> = {};
   /** Contrat choisi pour créer un litige (id). */
   selectedContractForCreate: number | null = null;
@@ -52,56 +54,112 @@ export class DisputesPlatformComponent implements OnInit {
 
   constructor(
     private readonly disputeService: DisputePlatformService,
+    private readonly authService: AuthService,
+    private readonly route: ActivatedRoute,
     private readonly contractService: ContractService,
-    private readonly authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    this.loadMyContracts();
+    this.applyRoutePrefill();
     this.loadDisputes();
   }
 
-  loadMyContracts(): void {
-    const me = this.authService.getCurrentUser();
-    if (!me?.id) {
-      this.myContracts = [];
-      return;
+  private applyRoutePrefill(): void {
+    const contractId = Number(this.route.snapshot.queryParamMap.get('contractId') || 0);
+    const contactUserId = Number(this.route.snapshot.queryParamMap.get('contactUserId') || 0);
+    const openCreate = this.route.snapshot.queryParamMap.get('openCreate') === '1';
+
+    if (contractId > 0) {
+      this.filterContractId = contractId;
+      this.selectedContractForCreate = contractId;
+      this.createForm.contractId = contractId;
+      this.myContracts = [{ id: contractId, title: `Contract #${contractId}` } as Contract];
     }
-    this.contractService.getAllForUser(me.id).subscribe((list) => {
-      this.myContracts = list ?? [];
-      this.myContracts.forEach(c => this.contractService.enrichForDisplay(c));
-      const otherIds = new Set<number>();
-      for (const c of this.myContracts) {
-        const oid = c.clientId === me.id ? c.freelancerId : c.clientId;
-        if (oid != null && oid !== me.id) otherIds.add(oid);
+
+    if (contactUserId > 0 && contractId > 0) {
+      this.contractContactById[contractId] = contactUserId;
+      this.createForm.contactUserId = contactUserId;
+      this.authService.getPublicUser(contactUserId).subscribe((u) => {
+        this.userNameCache[contactUserId] = [u.firstName, u.lastName].filter(Boolean).join(' ') || `User ${contactUserId}`;
+      });
+    } else if (contractId > 0) {
+      this.resolveContractCounterparty(contractId);
+    }
+
+    if (openCreate) {
+      this.showCreateForm = true;
+    }
+  }
+
+  /** Build contract selector from current disputes to avoid forbidden contract-service calls. */
+  private rebuildContractsFromDisputes(): void {
+    const me = this.authService.getCurrentUser();
+    const byContractId = new Map<number, number | null>();
+    for (const d of this.allDisputesFromApi) {
+      if (!d?.contractId) continue;
+      // Derive the counterparty for the current viewer from either side.
+      let other: number | null = null;
+      if (me?.id) {
+        if (d.raisedByUserId === me.id) {
+          other = d.contactUserId ?? null;
+        } else if (d.contactUserId === me.id) {
+          other = d.raisedByUserId ?? null;
+        }
+        if (other === me.id) {
+          // Ignore corrupted historical rows where contact == creator/self.
+          other = null;
+        }
       }
-      otherIds.forEach((id) => {
-        this.authService.getPublicUser(id).subscribe((u) => {
-          this.userNameCache[id] = [u.firstName, u.lastName].filter(Boolean).join(' ') || `User ${id}`;
-        });
+      if (!byContractId.has(d.contractId)) {
+        byContractId.set(d.contractId, other);
+      } else if (!byContractId.get(d.contractId) && other) {
+        // Prefer first valid non-self counterparty if present in any row.
+        byContractId.set(d.contractId, other);
+      }
+    }
+
+    this.contractContactById = {};
+    this.myContracts = Array.from(byContractId.entries()).map(([contractId, contactId]) => {
+      if (contactId != null) this.contractContactById[contractId] = contactId;
+      return {
+        id: contractId,
+        title: `Contract #${contractId}`,
+      } as Contract;
+    });
+
+    const contactIds = new Set<number>(Object.values(this.contractContactById));
+    contactIds.forEach((id) => {
+      this.authService.getPublicUser(id).subscribe((u) => {
+        this.userNameCache[id] = [u.firstName, u.lastName].filter(Boolean).join(' ') || `User ${id}`;
       });
     });
+
+    if (this.createForm.contractId > 0 && !this.myContracts.some((c) => c.id === this.createForm.contractId)) {
+      this.myContracts = [
+        ...this.myContracts,
+        { id: this.createForm.contractId, title: `Contract #${this.createForm.contractId}` } as Contract,
+      ];
+    }
   }
 
   getOtherPartyName(c: Contract): string {
-    const me = this.authService.getCurrentUser();
-    if (!me) return '';
-    const oid = c.clientId === me.id ? c.freelancerId : c.clientId;
+    const oid = this.contractContactById[c.id];
+    if (!oid) return '';
     return this.userNameCache[oid] || `User ${oid}`;
   }
 
   onCreateContractSelected(): void {
-    const me = this.authService.getCurrentUser();
     const cid = this.selectedContractForCreate;
-    if (!me?.id || cid == null || cid <= 0) {
+    if (cid == null || cid <= 0) {
       this.createForm.contractId = 0;
       this.createForm.contactUserId = null;
       return;
     }
-    const c = this.myContracts.find((x) => x.id === cid);
-    if (!c) return;
-    this.createForm.contractId = c.id;
-    this.createForm.contactUserId = c.clientId === me.id ? c.freelancerId : c.clientId;
+    this.createForm.contractId = cid;
+    // Always resolve from the contract for the selected user context.
+    // This avoids stale/corrupted contact values from old disputes.
+    this.createForm.contactUserId = null;
+    this.resolveContractCounterparty(cid);
   }
 
   toggleCreateForm(): void {
@@ -119,12 +177,14 @@ export class DisputesPlatformComponent implements OnInit {
   }
 
   canEdit(d: Dispute): boolean {
+    if (this.authService.hasRole('ADMIN')) return true;
     const uid = this.currentUserId;
     if (!uid) return false;
     return d.raisedByUserId === uid && d.status === 'OPEN';
   }
 
   canDelete(d: Dispute): boolean {
+    if (this.authService.hasRole('ADMIN')) return true;
     return this.canEdit(d);
   }
 
@@ -179,6 +239,7 @@ export class DisputesPlatformComponent implements OnInit {
     this.disputeService.list(cid, status).subscribe({
       next: (list) => {
         this.allDisputesFromApi = list ?? [];
+        this.rebuildContractsFromDisputes();
         this.applyContactFilter();
         this.loading = false;
       },
@@ -186,6 +247,7 @@ export class DisputesPlatformComponent implements OnInit {
         this.showAlert('Error loading disputes', 'error');
         this.allDisputesFromApi = [];
         this.disputes = [];
+        this.myContracts = [];
         this.loading = false;
       }
     });
@@ -207,35 +269,78 @@ export class DisputesPlatformComponent implements OnInit {
       return;
     }
 
-    const payload: CreateDisputeRequest = {
-      contractId: cid,
-      disputeType: this.createForm.disputeType,
-      reason: this.createForm.reason.trim()
-    };
-    const contact = this.createForm.contactUserId;
-    if (contact != null && contact > 0) {
-      payload.contactUserId = contact;
-    }
-
-    this.creating = true;
-    this.disputeService.create(payload).subscribe({
-      next: () => {
-        this.showAlert('Litige créé', 'success');
-        this.showCreateForm = false;
-        this.selectedContractForCreate = null;
-        this.createForm = {
-          contractId: 0,
-          contactUserId: null,
-          disputeType: this.createForm.disputeType,
-          reason: ''
-        };
-        this.loadDisputes();
-        this.creating = false;
-      },
-      error: () => {
-        this.showAlert('Erreur à la création du litige', 'error');
-        this.creating = false;
+    const doCreate = (contactUserId: number | null): void => {
+      if (!contactUserId || contactUserId <= 0) {
+        this.showAlert('Impossible de déterminer la contrepartie du contrat. Réessayez depuis la page du contrat.', 'error');
+        return;
       }
+
+      const payload: CreateDisputeRequest = {
+        contractId: cid,
+        contactUserId,
+        disputeType: this.createForm.disputeType,
+        reason: this.createForm.reason.trim()
+      };
+
+      this.creating = true;
+      this.disputeService.create(payload).subscribe({
+        next: () => {
+          this.showAlert('Litige créé', 'success');
+          this.showCreateForm = false;
+          this.selectedContractForCreate = null;
+          this.createForm = {
+            contractId: 0,
+            contactUserId: null,
+            disputeType: this.createForm.disputeType,
+            reason: ''
+          };
+          this.loadDisputes();
+          this.creating = false;
+        },
+        error: (err) => {
+          const backendMsg =
+            err?.error?.message ||
+            err?.error?.error ||
+            (typeof err?.error === 'string' ? err.error : '');
+          const msg = String(backendMsg || '').toLowerCase();
+          if (msg.includes('contactuserid cannot be the same as creator')) {
+            this.showAlert('Le contact du litige ne peut pas être vous-même. Sélectionnez le bon contrat/contrepartie.', 'error');
+          } else if (msg.includes('bad request') || err?.status === 400) {
+            this.showAlert(backendMsg || 'Requête invalide: vérifiez contrat, contrepartie et description.', 'error');
+          } else {
+            this.showAlert(backendMsg || 'Erreur à la création du litige', 'error');
+          }
+          this.creating = false;
+        }
+      });
+    };
+
+    // Always resolve counterparty from contract before create.
+    // Do not trust cached values from previous rows.
+    this.resolveContractCounterparty(cid, doCreate);
+  }
+
+  private resolveContractCounterparty(contractId: number, done?: (contactUserId: number | null) => void): void {
+    const me = this.authService.getCurrentUser();
+    if (!me?.id) {
+      done?.(null);
+      return;
+    }
+    this.contractService.getContractById(contractId).subscribe({
+      next: (c) => {
+        const contact = c.clientId === me.id ? c.freelancerId : c.clientId;
+        if (contact && contact > 0) {
+          this.contractContactById[contractId] = contact;
+          this.createForm.contactUserId = contact;
+          this.authService.getPublicUser(contact).subscribe((u) => {
+            this.userNameCache[contact] = [u.firstName, u.lastName].filter(Boolean).join(' ') || `User ${contact}`;
+          });
+          done?.(contact);
+          return;
+        }
+        done?.(null);
+      },
+      error: () => done?.(null),
     });
   }
 

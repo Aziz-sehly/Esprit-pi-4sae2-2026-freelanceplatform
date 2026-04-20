@@ -68,6 +68,18 @@
     </div>
   </section>
 
+  <section class="flow-note" *ngIf="hasBlockingDispute">
+    <span class="flow-note__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 14h-2v-2h2Zm0-4h-2V7h2Z" />
+      </svg>
+    </span>
+    <div>
+      <strong>Contract locked by dispute</strong>
+      <p>A dispute is open or under review for this contract. Milestone actions are blocked until an admin resolves it.</p>
+    </div>
+  </section>
+
   <div class="actions">
     <a mat-stroked-button [routerLink]="['/front/freelancer/contracts', contractId, 'activity']">Open activity center</a>
     <a mat-stroked-button [routerLink]="['/front/freelancer/contracts', contractId, 'disputes']">Open dispute center</a>
@@ -158,6 +170,7 @@
                         color="primary"
                         type="button"
                         *ngIf="milestone.status === 'PENDING' || milestone.status === 'REVISION_REQUESTED'"
+                        [disabled]="hasBlockingDispute"
                         (click)="submit(milestone)">
                         {{ actionLabel(milestone.status) }}
                       </button>
@@ -219,6 +232,7 @@
                     color="primary"
                     type="button"
                     *ngIf="milestone.status === 'PENDING' || milestone.status === 'REVISION_REQUESTED'"
+                    [disabled]="hasBlockingDispute"
                     (click)="submit(milestone)">
                     {{ actionLabel(milestone.status) }}
                   </button>

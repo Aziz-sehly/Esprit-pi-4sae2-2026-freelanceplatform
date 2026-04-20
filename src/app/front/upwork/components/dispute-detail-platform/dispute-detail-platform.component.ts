@@ -16,9 +16,12 @@ import {
   ResolveDisputeRequest,
   UpdateDisputeRequest,
   DisputeStatus,
-  ResolutionType
+  ResolutionType,
+  AnalyzeMediaItemRequest,
+  MediaAnalysisResultDto,
 } from '../../models/communication';
 import { MessagePlatformService, UploadResponse } from '../../services/message-platform.service';
+import { MediaAnalysisPlatformService } from '../../services/media-analysis-platform.service';
 
 @Component({
   selector: 'app-dispute-detail-platform',
@@ -48,6 +51,9 @@ export class DisputeDetailPlatformComponent implements OnInit, OnDestroy {
   alertMessage: string | null = null;
   alertType: 'success' | 'error' | null = null;
   highlightedEvidenceId: number | null = null;
+
+  mediaAnalysisLoading = false;
+  mediaAnalysisResults: MediaAnalysisResultDto[] | null = null;
 
   showEditForm = false;
   editForm: UpdateDisputeRequest = { disputeType: 'QUALITY_ISSUE', reason: '' };
@@ -82,13 +88,16 @@ export class DisputeDetailPlatformComponent implements OnInit, OnDestroy {
     private readonly router: Router,
     private readonly disputeService: DisputePlatformService,
     private readonly authService: AuthService,
-    private readonly messageService: MessagePlatformService
+    private readonly messageService: MessagePlatformService,
+    private readonly mediaAnalysisService: MediaAnalysisPlatformService
   ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     this.isAdmin = this.authService.hasRole('ADMIN');
-    this.fromAdminView = this.route.snapshot.queryParamMap.get('admin') === 'true';
+    this.fromAdminView =
+      this.route.snapshot.queryParamMap.get('admin') === 'true' ||
+      this.router.url.includes('/back/admin-disputes');
     if (id) {
       this.loadDetails(+id);
     }
@@ -254,7 +263,12 @@ export class DisputeDetailPlatformComponent implements OnInit, OnDestroy {
     if (!this.details) return false;
     if (this.isAdmin) return true;
     if (!this.currentUserId) return false;
-    return this.currentUserId === this.details.dispute.raisedByUserId;
+    const d = this.details.dispute;
+    // Both contract parties should be able to support their side with evidence.
+    return (
+      this.currentUserId === d.raisedByUserId ||
+      this.currentUserId === (d.contactUserId ?? null)
+    );
   }
 
   onEvidenceFileSelected(event: Event): void {
@@ -516,6 +530,69 @@ export class DisputeDetailPlatformComponent implements OnInit, OnDestroy {
     return this.fromAdminView && this.isAdmin ? '/back/admin-disputes' : '/front/disputes';
   }
 
+  /** Liens « duplicate candidates » : rester dans le back-office si on y est déjà. */
+  disputeLinkSegments(disputeId: number): (string | number)[] {
+    if (this.router.url.includes('/back/admin-disputes')) {
+      return ['/back', 'admin-disputes', disputeId];
+    }
+    return ['/front', 'disputes', disputeId];
+  }
+
+  disputeLinkQueryParams(): Record<string, string> | null {
+    return this.isAdmin ? { admin: 'true' } : null;
+  }
+
+  runMediaAnalysis(): void {
+    if (!this.evidences?.length) {
+      this.showAlert('No evidence to analyze', 'error');
+      return;
+    }
+    const items: AnalyzeMediaItemRequest[] = [];
+    for (const ev of this.evidences) {
+      const path = this.resourcePathForAnalysis(ev.fileUrl);
+      if (path) {
+        items.push({ evidenceId: ev.id, resourcePath: path });
+      }
+    }
+    if (!items.length) {
+      this.showAlert('Evidence rows have no usable file paths for analysis.', 'error');
+      return;
+    }
+    this.mediaAnalysisLoading = true;
+    this.mediaAnalysisResults = null;
+    this.mediaAnalysisService.analyzeBatch(items).subscribe({
+      next: (rows) => {
+        this.mediaAnalysisResults = rows ?? [];
+        this.mediaAnalysisLoading = false;
+      },
+      error: (err) => {
+        this.mediaAnalysisLoading = false;
+        this.showAlert(err?.error?.message || 'Media analysis request failed', 'error');
+      },
+    });
+  }
+
+  private resourcePathForAnalysis(fileUrl: string | undefined): string {
+    const raw = (fileUrl || '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      try {
+        const u = new URL(raw);
+        return `${u.pathname}${u.search || ''}`;
+      } catch {
+        return '';
+      }
+    }
+    return raw.startsWith('/') ? raw : `/${raw}`;
+  }
+
+  formatBytes(n: number | undefined): string {
+    if (n == null || Number.isNaN(n)) return '—';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   slaRiskLabel(probability: number | null | undefined): string {
     if (probability == null || Number.isNaN(probability)) return 'Unknown risk';
     if (probability >= 0.8) return 'Critical risk';
@@ -601,9 +678,36 @@ export class DisputeDetailPlatformComponent implements OnInit, OnDestroy {
   /** URL absolue pour lecteurs média (prod : gateway). */
   resolveMediaUrl(url: string | undefined): string {
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const raw = url.trim();
+    const toCanonicalPath = (p: string): string => {
+      if (p.startsWith('/message-service/messages/attachments/')) {
+        return p.replace('/message-service/messages/attachments/', '/api/messages/attachments/');
+      }
+      if (p.startsWith('/message-service/uploads/')) {
+        return p.replace('/message-service/uploads/', '/api/messages/attachments/');
+      }
+      if (p.startsWith('/messages/attachments/')) {
+        return p.replace('/messages/attachments/', '/api/messages/attachments/');
+      }
+      if (p.startsWith('/uploads/')) {
+        return p.replace('/uploads/', '/api/messages/attachments/');
+      }
+      return p;
+    };
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      try {
+        const parsed = new URL(raw);
+        const normalizedPath = toCanonicalPath(parsed.pathname);
+        return `${parsed.origin}${normalizedPath}${parsed.search}`;
+      } catch {
+        return raw;
+      }
+    }
+
+    const normalized = toCanonicalPath(raw.startsWith('/') ? raw : `/${raw}`);
     const base = environment.messageApiBase.replace(/\/$/, '');
-    return url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
+    return `${base}${normalized}`;
   }
 
   isImageEvidence(ev: Evidence): boolean {

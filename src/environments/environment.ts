@@ -13,6 +13,13 @@
 export const environment = {
   production: false,
 
+  /**
+   * Si true, l’auth utilise `/microservice-user/...` (même origine que `ng serve`) + `proxy.conf.json`
+   * → évite CORS / `net::ERR_FAILED` sur login/register.
+   * Mettre false si l’UI est servie avec accès direct cross-origin au gateway.
+   */
+  authApiSameOriginProxy: true,
+
   /** Base du gateway (CORS + routage) */
   gatewayBaseUrl: 'http://localhost:8085',
 
@@ -33,6 +40,9 @@ export const environment = {
 
   /** Messagerie contrat : microservice dédié. */
   messageApiBase: 'http://localhost:8085/message-service',
+
+  /** Analyse technique des pièces jointes (PDF, image, texte) via Eureka + gateway. */
+  mediaAnalysisApiBase: 'http://localhost:8085/media-analysis-service',
 
   /**
    * Préfixe pour les URLs relatives renvoyées par l’API (ex. /milestone/api/resources/.../file).

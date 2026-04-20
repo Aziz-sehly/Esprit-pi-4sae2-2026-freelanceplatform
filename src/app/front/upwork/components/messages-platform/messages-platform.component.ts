@@ -87,6 +87,10 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
   recording = false;
   private mediaRecorder: MediaRecorder | null = null;
   private recordingChunks: Blob[] = [];
+  private audioPlayingCount = 0;
+  private recordingMimeType = 'audio/webm';
+  audioInputDevices: MediaDeviceInfo[] = [];
+  selectedAudioInputId = '';
 
   get currentUserId(): number | null {
     return this.authService.getNumericUserId();
@@ -157,6 +161,7 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
     });
     window.addEventListener('online', () => { this.isOnline = true; this.flushOfflineQueue(); });
     window.addEventListener('offline', () => { this.isOnline = false; });
+    this.refreshAudioInputDevices();
     this.loadData();
   }
 
@@ -181,19 +186,22 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
       return;
     }
     this.loading = true;
-    this.loadContractPartnersAsUsers(uid, () => {
-      this.messageService.getBlockedUsers(uid).pipe(catchError(() => of([] as number[]))).subscribe((ids) => (this.blockedUserIds = ids || []));
-      this.messageService.getConversations(uid).pipe(catchError(() => of([] as ConversationDto[]))).subscribe({
-        next: (conv) => {
-          this.conversations = conv ?? [];
+    this.messageService.getBlockedUsers(uid).pipe(catchError(() => of([] as number[]))).subscribe((ids) => (this.blockedUserIds = ids || []));
+    this.messageService.getConversations(uid).pipe(catchError(() => of([] as ConversationDto[]))).subscribe({
+      next: (conv) => {
+        this.conversations = conv ?? [];
+        const conversationPartnerIds = Array.from(
+          new Set((this.conversations ?? []).map((c) => c.otherUserId).filter((id) => id != null)),
+        ) as number[];
+        this.loadContractPartnersAsUsers(uid, () => {
           this.restoreSelectedConversation();
           this.loading = false;
           this.cdr.markForCheck();
-        },
-        error: () => {
-          this.loading = false;
-        },
-      });
+        }, conversationPartnerIds);
+      },
+      error: () => {
+        this.loading = false;
+      },
     });
   }
 
@@ -202,7 +210,7 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
    * puis récupère leurs profils depuis le user-service.
    * Remplace complètement le message-service/users (qui renvoyait des faux IDs démo).
    */
-  private loadContractPartnersAsUsers(uid: number, done: () => void): void {
+  private loadContractPartnersAsUsers(uid: number, done: () => void, fallbackUserIds: number[] = []): void {
     const me = this.authService.getCurrentUser();
     if (!me?.id) {
       this.myContracts = [];
@@ -211,6 +219,43 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Admin users may not have access to client/freelancer contract endpoints.
+    // Load all users so admin can start conversations with anyone.
+    if (me.role === 'ADMIN') {
+      this.authService.getAllUsersAdmin().pipe(catchError(() => of([]))).subscribe({
+        next: (list) => {
+          const mapped = (list ?? [])
+            .filter((u) => u?.id != null && u.id !== me.id)
+            .map((u) => ({
+              id: u.id,
+              email: u.email,
+              firstName: u.firstName,
+              lastName: u.lastName,
+            }));
+          if (mapped.length > 0) {
+            this.users = mapped;
+          } else if (this.users.length === 0) {
+            // Last-resort bootstrap if admin listing is empty/unavailable.
+            this.loadAdminUsersFallback(fallbackUserIds, done);
+            return;
+          }
+          done();
+        },
+        error: () => {
+          // Do not wipe the current admin list on transient API errors.
+          // Only bootstrap from conversation ids if we have no list yet.
+          if (this.users.length === 0) {
+            this.loadAdminUsersFallback(fallbackUserIds, done);
+            return;
+          }
+          done();
+        },
+      });
+      return;
+    }
+
+    // For CLIENT/FREELANCER, always try contracts first so the users list remains stable.
+    // Conversation partner ids are merged as an additional source, not a replacement.
     this.contractService.getAllForUser(me.id).subscribe((contracts) => {
       this.myContracts = contracts ?? [];
       this.myContracts.forEach(c => this.contractService.enrichForDisplay(c));
@@ -219,31 +264,158 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
         const oid = c.clientId === me.id ? c.freelancerId : c.clientId;
         if (oid != null && oid !== me.id) otherIds.add(oid);
       }
-
-      if (otherIds.size === 0) {
-        this.users = [];
-        done();
-        return;
+      for (const id of fallbackUserIds) {
+        if (id != null && id !== me.id) otherIds.add(id);
       }
-
-      forkJoin([...otherIds].map((id) => this.authService.getPublicUser(id))).subscribe({
-        next: (profiles) => {
-          this.users = profiles
-            .filter((p) => p?.id != null)
-            .map((p) => ({
-              id: p.id,
-              email: p.email,
-              firstName: p.firstName,
-              lastName: p.lastName,
-            }));
-          if (this.selectedConversation) this.refreshPartnerMilestones();
-          done();
+      // Ensure admin accounts are always discoverable even before first message.
+      this.authService.getPublicAdmins().pipe(catchError(() => of([]))).subscribe({
+        next: (admins) => {
+          for (const a of admins ?? []) {
+            if (a?.id != null && a.id !== me.id) otherIds.add(a.id);
+          }
+          // Merge public user directory so all users can discover each other,
+          // even before contracts/messages exist.
+          this.authService.getPublicUsers(me.id).pipe(catchError(() => of([]))).subscribe({
+            next: (directoryUsers) => {
+              for (const u of directoryUsers ?? []) {
+                if (u?.id != null && u.id !== me.id) otherIds.add(u.id);
+              }
+              if (otherIds.size === 0) {
+                this.users = [];
+                done();
+                return;
+              }
+              this.loadUsersByIds([...otherIds], () => {
+                if (this.selectedConversation) this.refreshPartnerMilestones();
+                done();
+              });
+            },
+            error: () => this.loadUsersByIds([...otherIds], () => {
+              if (this.selectedConversation) this.refreshPartnerMilestones();
+              done();
+            }),
+          });
         },
         error: () => {
-          this.users = [...otherIds].map((id) => ({ id } as UserDto));
-          done();
+          this.authService.getPublicUsers(me.id).pipe(catchError(() => of([]))).subscribe({
+            next: (directoryUsers) => {
+              for (const u of directoryUsers ?? []) {
+                if (u?.id != null && u.id !== me.id) otherIds.add(u.id);
+              }
+              if (otherIds.size === 0) {
+                this.users = [];
+                done();
+                return;
+              }
+              this.loadUsersByIds([...otherIds], () => {
+                if (this.selectedConversation) this.refreshPartnerMilestones();
+                done();
+              });
+            },
+            error: () => {
+              if (otherIds.size === 0) {
+                this.users = [];
+                done();
+                return;
+              }
+              this.loadUsersByIds([...otherIds], () => {
+                if (this.selectedConversation) this.refreshPartnerMilestones();
+                done();
+              });
+            },
+          });
         },
       });
+    }, () => {
+      this.myContracts = [];
+      const merged = new Set<number>(fallbackUserIds ?? []);
+      this.authService.getPublicAdmins().pipe(catchError(() => of([]))).subscribe({
+        next: (admins) => {
+          for (const a of admins ?? []) {
+            if (a?.id != null && a.id !== me.id) merged.add(a.id);
+          }
+          this.loadUsersByIds([...merged], done);
+        },
+        error: () => this.loadUsersByIds([...merged], done),
+      });
+    });
+  }
+
+  /**
+   * Fallback for admin contact list when /users admin endpoint is unavailable.
+   * Uses candidate ids from message-service + existing conversations, then keeps only real public profiles.
+   */
+  private loadAdminUsersFallback(fallbackUserIds: number[], done: () => void): void {
+    this.messageService.getUsers(-1).pipe(catchError(() => of([] as UserDto[]))).subscribe({
+      next: (msgUsers) => {
+        const me = this.authService.getCurrentUser();
+        const candidateIds = new Set<number>();
+        for (const u of msgUsers ?? []) {
+          if (u?.id != null) candidateIds.add(u.id);
+        }
+        for (const id of fallbackUserIds ?? []) {
+          if (id != null) candidateIds.add(id);
+        }
+        if (me?.id != null) candidateIds.delete(me.id);
+
+        const ids = [...candidateIds];
+        if (ids.length === 0) {
+          this.users = [];
+          done();
+          return;
+        }
+
+        forkJoin(ids.map((id) => this.authService.getPublicUser(id))).subscribe({
+          next: (profiles) => {
+            const hydrated = (profiles ?? [])
+              .filter((p) => p?.id != null)
+              .map((p) => ({
+                id: p.id,
+                email: p.email,
+                firstName: p.firstName,
+                lastName: p.lastName,
+              }))
+              // AuthService fallback for unknown users returns empty profile; filter those out.
+              .filter((u) => !!(u.email || u.firstName || u.lastName));
+            this.users = hydrated;
+            done();
+          },
+          error: () => {
+            this.users = [];
+            done();
+          },
+        });
+      },
+      error: () => {
+        this.users = [];
+        done();
+      },
+    });
+  }
+
+  private loadUsersByIds(ids: number[], done: () => void): void {
+    const uniqueIds = Array.from(new Set(ids.filter((id) => id != null))) as number[];
+    if (uniqueIds.length === 0) {
+      this.users = [];
+      done();
+      return;
+    }
+    forkJoin(uniqueIds.map((id) => this.authService.getPublicUser(id))).subscribe({
+      next: (profiles) => {
+        this.users = profiles
+          .filter((p) => p?.id != null)
+          .map((p) => ({
+            id: p.id,
+            email: p.email,
+            firstName: p.firstName,
+            lastName: p.lastName,
+          }));
+        done();
+      },
+      error: () => {
+        this.users = uniqueIds.map((id) => ({ id } as UserDto));
+        done();
+      },
     });
   }
 
@@ -351,6 +523,7 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
     const conv = this.selectedConversation;
     const uid = this.currentUserId;
     if (!conv || uid == null) return;
+    if (this.audioPlayingCount > 0) return;
 
     this.messageService.listConversation(conv.contractId, uid, conv.otherUserId).subscribe({
       next: (msgs) => {
@@ -366,6 +539,57 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
         });
       },
       error: () => this.showAlert('Error loading messages', 'error')
+    });
+  }
+
+  trackMessageById(_: number, m: Message): number {
+    return m.id;
+  }
+
+  onAudioPlay(): void {
+    this.audioPlayingCount += 1;
+  }
+
+  onAudioStop(): void {
+    this.audioPlayingCount = Math.max(0, this.audioPlayingCount - 1);
+  }
+
+  private pickRecordingMimeType(): string {
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+      'audio/mp4',
+    ];
+    for (const c of candidates) {
+      try {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(c)) return c;
+      } catch {
+        // ignore and continue
+      }
+    }
+    return '';
+  }
+
+  private extensionForMimeType(mime: string): string {
+    const m = (mime || '').toLowerCase();
+    if (m.includes('ogg')) return 'ogg';
+    if (m.includes('mp4') || m.includes('m4a')) return 'm4a';
+    if (m.includes('mpeg') || m.includes('mp3')) return 'mp3';
+    if (m.includes('wav')) return 'wav';
+    return 'webm';
+  }
+
+  private refreshAudioInputDevices(): void {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      this.audioInputDevices = (devices || []).filter((d) => d.kind === 'audioinput');
+      if (!this.selectedAudioInputId && this.audioInputDevices.length > 0) {
+        this.selectedAudioInputId = this.audioInputDevices[0].deviceId;
+      }
+    }).catch(() => {
+      this.audioInputDevices = [];
     });
   }
 
@@ -473,8 +697,25 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
     return /\.(webm|mp3|ogg|wav|m4a)$/i.test(ext);
   }
 
+  private inferAudioMime(url?: string, fileName?: string): string | null {
+    const target = ((fileName || url || '').toLowerCase()).trim();
+    if (target.endsWith('.webm')) return 'audio/webm';
+    if (target.endsWith('.mp3')) return 'audio/mpeg';
+    if (target.endsWith('.ogg')) return 'audio/ogg';
+    if (target.endsWith('.wav')) return 'audio/wav';
+    if (target.endsWith('.m4a')) return 'audio/mp4';
+    return null;
+  }
+
+  getAudioMimeLabel(m: Message): string {
+    const guessed = this.inferAudioMime(m.attachmentUrl, m.attachmentFileName);
+    return guessed || 'unknown';
+  }
+
   /** Cache blob URLs for authenticated attachment preview (évite 401) */
   attachmentBlobUrls: Record<string, string> = {};
+  /** Prevent endless retries for attachments that already failed to load. */
+  attachmentLoadFailed: Record<string, true> = {};
 
   getAttachmentPreviewUrl(m: Message): string | null {
     if (!m.attachmentUrl || !this.isImageAttachment(m.attachmentUrl, m.attachmentFileName)) return null;
@@ -490,20 +731,32 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
   loadAttachmentPreview(m: Message): void {
     if (!m.attachmentUrl) return;
     const isPreview = this.isImageAttachment(m.attachmentUrl, m.attachmentFileName) || this.isAudioAttachment(m.attachmentUrl, m.attachmentFileName);
-    if (!isPreview || this.attachmentBlobUrls[m.attachmentUrl]) return;
+    if (!isPreview || this.attachmentBlobUrls[m.attachmentUrl] || this.attachmentLoadFailed[m.attachmentUrl]) return;
     this.messageService.getAttachment(m.attachmentUrl).subscribe({
       next: (blob) => {
-        const url = URL.createObjectURL(blob);
+        let finalBlob = blob;
+        // Some servers/proxies return generic octet-stream; force a playable audio MIME by extension.
+        if (this.isAudioAttachment(m.attachmentUrl, m.attachmentFileName)) {
+          const guessed = this.inferAudioMime(m.attachmentUrl, m.attachmentFileName);
+          if (guessed && (!blob.type || blob.type === 'application/octet-stream')) {
+            finalBlob = new Blob([blob], { type: guessed });
+          }
+        }
+        const url = URL.createObjectURL(finalBlob);
         this.attachmentBlobUrls = { ...this.attachmentBlobUrls, [m.attachmentUrl!]: url };
         this.cdr.markForCheck();
       },
-      error: () => {}
+      error: () => {
+        // Mark failed once so polling won't re-request broken attachment URLs.
+        this.attachmentLoadFailed = { ...this.attachmentLoadFailed, [m.attachmentUrl!]: true };
+      }
     });
   }
 
   private revokeAttachmentBlobUrls(): void {
     Object.values(this.attachmentBlobUrls).forEach(url => URL.revokeObjectURL(url));
     this.attachmentBlobUrls = {};
+    this.attachmentLoadFailed = {};
   }
 
   private offlineQueue: MessageRequest[] = [];
@@ -512,14 +765,22 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
       this.showAlert('Voice recording not supported', 'error');
       return;
     }
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      this.mediaRecorder = new MediaRecorder(stream);
+    const audioConstraint: MediaTrackConstraints | boolean = this.selectedAudioInputId
+      ? { deviceId: { exact: this.selectedAudioInputId } }
+      : true;
+    navigator.mediaDevices.getUserMedia({ audio: audioConstraint }).then(stream => {
+      this.refreshAudioInputDevices();
+      const preferred = this.pickRecordingMimeType();
+      this.mediaRecorder = preferred ? new MediaRecorder(stream, { mimeType: preferred }) : new MediaRecorder(stream);
+      this.recordingMimeType = this.mediaRecorder.mimeType || preferred || 'audio/webm';
       this.recordingChunks = [];
       this.mediaRecorder.ondataavailable = (e) => { if (e.data.size) this.recordingChunks.push(e.data); };
       this.mediaRecorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(this.recordingChunks, { type: 'audio/webm' });
-        const file = new File([blob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
+        const mime = this.recordingMimeType || 'audio/webm';
+        const ext = this.extensionForMimeType(mime);
+        const blob = new Blob(this.recordingChunks, { type: mime });
+        const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mime });
         this.uploading = true;
         this.messageService.uploadFile(file).subscribe({
           next: (res) => {
@@ -532,7 +793,7 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
       };
       this.mediaRecorder.start();
       this.recording = true;
-    }).catch(() => this.showAlert('Microphone access denied', 'error'));
+    }).catch(() => this.showAlert('Microphone access denied or invalid input device', 'error'));
   }
 
   stopVoiceRecording(): void {
@@ -864,8 +1125,9 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
 
   deleteConversation(): void {
     const conv = this.selectedConversation;
-    if (!conv || !confirm('Delete entire conversation?')) return;
-    this.messageService.deleteConversation(conv.contractId).subscribe({
+    const uid = this.currentUserId;
+    if (!conv || !uid || !confirm('Delete entire conversation?')) return;
+    this.messageService.deleteConversation(conv.contractId, uid, conv.otherUserId).subscribe({
       next: () => {
         this.selectedConversation = null;
         this.messages = [];
@@ -939,6 +1201,23 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
     });
   }
 
+  downloadAttachment(url: string | undefined, fileName?: string): void {
+    if (!url) return;
+    this.messageService.getAttachment(url).subscribe({
+      next: (blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName?.trim() || `attachment-${Date.now()}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+      },
+      error: () => this.showAlert('Unable to download attachment', 'error'),
+    });
+  }
+
   private saveSelectedConversation(): void {
     const c = this.selectedConversation;
     if (!c) return;
@@ -979,7 +1258,8 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
   private startPolling(): void {
     this.stopPolling();
     this.pollInterval = setInterval(() => {
-      if (this.selectedConversation) this.loadMessages();
+      // Avoid interrupting voice playback by replacing message list mid-stream.
+      if (this.selectedConversation && this.audioPlayingCount === 0) this.loadMessages();
     }, this.POLL_INTERVAL_MS);
   }
 
@@ -998,4 +1278,5 @@ export class MessagesPlatformComponent implements OnInit, OnDestroy {
       this.alertType = null;
     }, 3000);
   }
+
 }

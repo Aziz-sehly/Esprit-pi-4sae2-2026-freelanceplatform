@@ -321,6 +321,35 @@ export const routes: Routes = [
         loadComponent: () => import('./admin/admin-contracts/contracts.component')
           .then(m => m.AdminContractsComponent)
       },
+      {
+        path: 'admin-disputes/:id',
+        loadComponent: () =>
+          import('./front/upwork/components/dispute-detail-platform/dispute-detail-platform.component').then(
+            (m) => m.DisputeDetailPlatformComponent
+          ),
+      },
+      {
+        path: 'admin-disputes',
+        loadComponent: () =>
+          import('./admin/admin-disputes/admin-disputes.component').then((m) => m.AdminDisputesComponent),
+      },
+      {
+        path: 'admin-messages',
+        loadComponent: () =>
+          import('./admin/admin-messages/admin-messages.component').then((m) => m.AdminMessagesComponent),
+      },
+      {
+        path: 'admin-chat',
+        loadComponent: () =>
+          import('./front/upwork/components/messages-platform/messages-platform.component').then(
+            (m) => m.MessagesPlatformComponent,
+          ),
+      },
+      {
+        path: 'admin-users',
+        loadComponent: () =>
+          import('./admin/admin-users/admin-users.component').then((m) => m.AdminUsersComponent),
+      },
 
       // ── Standard back-office routes ─────────────────────────────────────
       { path: 'crm',                component: CrmComponent },

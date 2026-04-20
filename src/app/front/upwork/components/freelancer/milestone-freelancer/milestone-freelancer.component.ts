@@ -18,6 +18,7 @@ import { MilestoneResponse, MilestoneStatus } from '../../../models/milestone.mo
 import { MilestoneService } from '../../../services/milestone.service';
 import { NotificationService } from '../../../services/notification.service';
 import { AppNotification } from '../../../models/notification.model';
+import { DisputeService } from '../../../services/dispute.service';
 import { ContractChatComponent } from '../../shared/contract-chat/contract-chat.component';
 import { ContractCallComponent } from '../../shared/contract-call/contract-call.component';
 import { PaymentHistoryComponent } from '../../client/payment-history/payment-history.component';
@@ -63,6 +64,7 @@ export class MilestoneFreelancerComponent {
   pageSize = 6;
   readonly pageSizeOptions = [6, 12, 24];
   activeCallNotification: AppNotification | null = null;
+  hasBlockingDispute = false;
   banner = '';
   bannerTone: 'success' | 'error' = 'success';
   private requestedTab: 'milestones' | 'payments' | 'resources' | null = null;
@@ -73,7 +75,8 @@ export class MilestoneFreelancerComponent {
     private readonly route: ActivatedRoute,
     private readonly contractService: ContractService,
     private readonly milestoneService: MilestoneService,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
+    private readonly disputeService: DisputeService
   ) {}
 
   ngOnInit(): void {
@@ -108,6 +111,7 @@ export class MilestoneFreelancerComponent {
       next: (contract) => {
         this.contract = contract;
         this.contractService.enrichForDisplay(contract);
+        this.loadBlockingDisputeState();
         this.loadMilestones();
       },
       error: (err) => {
@@ -138,6 +142,10 @@ export class MilestoneFreelancerComponent {
   }
 
   submit(milestone: MilestoneResponse): void {
+    if (this.hasBlockingDispute) {
+      this.showBanner('Contract actions are locked while a dispute is open or in review. Wait for admin resolution.', 'error');
+      return;
+    }
     this.selectedMilestoneId = milestone.id;
     this.loading = true;
     this.milestoneService.submit(milestone.id).subscribe({
@@ -218,6 +226,14 @@ export class MilestoneFreelancerComponent {
   private showBanner(message: string, tone: 'success' | 'error'): void {
     this.banner = message;
     this.bannerTone = tone;
+  }
+
+  private loadBlockingDisputeState(): void {
+    this.disputeService.hasBlockingDispute(this.contractId).subscribe({
+      next: (response) => {
+        this.hasBlockingDispute = !!response.blocking;
+      },
+    });
   }
 
   get selectedMilestone(): MilestoneResponse | null {

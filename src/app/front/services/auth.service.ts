@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap, catchError, of, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 
 // ── DTOs matching Spring Boot backend ─────────────────────────────────────────
 
@@ -55,6 +56,36 @@ export interface UpdateProfileRequest {
   companyName?: string;
 }
 
+export interface AdminCreateUserRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: 'FREELANCER' | 'CLIENT' | 'ADMIN';
+  phoneNumber?: string;
+  skills?: string;
+  portfolioUrl?: string;
+  companyName?: string;
+  isVerified?: boolean;
+  isActive?: boolean;
+}
+
+export interface AdminUpdateUserRequest {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: 'FREELANCER' | 'CLIENT' | 'ADMIN';
+  phoneNumber?: string;
+  bio?: string;
+  profilePicture?: string;
+  skills?: string;
+  portfolioUrl?: string;
+  companyName?: string;
+  isVerified?: boolean;
+  isActive?: boolean;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable({
@@ -62,8 +93,10 @@ export interface UpdateProfileRequest {
 })
 export class AuthService {
 
-  // All requests go through the API Gateway on port 8085
-  private readonly BASE_URL = 'http://localhost:8085/microservice-user/api';
+  /** Auth via gateway ; en dev souvent même origine + proxy pour éviter CORS. */
+  private readonly BASE_URL = environment.authApiSameOriginProxy
+    ? '/microservice-user/api'
+    : `${environment.gatewayBaseUrl}/microservice-user/api`;
 
   private currentUserSubject = new BehaviorSubject<UserResponse | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -246,7 +279,7 @@ export class AuthService {
 
   /** Profil minimal pour affichage (litiges, etc.). */
   getPublicUser(id: number): Observable<UserResponse> {
-    return this.http.get<UserResponse>(`${this.BASE_URL}/users/${id}`, { headers: this.authHeaders() }).pipe(
+    return this.http.get<UserResponse>(`${this.BASE_URL}/users/public/${id}`, { headers: this.authHeaders() }).pipe(
       catchError(() =>
         of({
           id,
@@ -259,6 +292,46 @@ export class AuthService {
         } as UserResponse),
       ),
     );
+  }
+
+  /** Admin only: list all users with real profile names. */
+  getAllUsersAdmin(): Observable<UserResponse[]> {
+    return this.http.get<UserResponse[]>(`${this.BASE_URL}/users`, { headers: this.authHeaders() }).pipe(
+      catchError(() => of([])),
+    );
+  }
+
+  /** Public: list admin users for messaging discovery. */
+  getPublicAdmins(): Observable<UserResponse[]> {
+    return this.http.get<UserResponse[]>(`${this.BASE_URL}/users/public/admins`).pipe(
+      catchError(() => of([])),
+    );
+  }
+
+  getPublicUsers(excludeUserId?: number): Observable<UserResponse[]> {
+    const suffix = excludeUserId != null ? `?excludeUserId=${excludeUserId}` : '';
+    return this.http.get<UserResponse[]>(`${this.BASE_URL}/users/public/list${suffix}`).pipe(
+      catchError(() => of([])),
+    );
+  }
+
+  createUserAdmin(request: AdminCreateUserRequest): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${this.BASE_URL}/users/admin`, request, { headers: this.authHeaders() });
+  }
+
+  updateUserAdmin(id: number, request: AdminUpdateUserRequest): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.BASE_URL}/users/admin/${id}`, request, { headers: this.authHeaders() });
+  }
+
+  setUserVerifiedAdmin(id: number, verified: boolean): Observable<UserResponse> {
+    return this.http.patch<UserResponse>(`${this.BASE_URL}/users/admin/${id}/verify`, null, {
+      headers: this.authHeaders(),
+      params: { verified: String(verified) },
+    });
+  }
+
+  deleteUserAdmin(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.BASE_URL}/users/admin/${id}`, { headers: this.authHeaders() });
   }
 
   private authHeaders(): HttpHeaders {

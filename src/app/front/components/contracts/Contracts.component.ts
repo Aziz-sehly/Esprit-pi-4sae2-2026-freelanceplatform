@@ -308,7 +308,22 @@ export class ContractsComponent implements OnInit {
   }
 
   goToDisputes(): void {
-    this.router.navigate(['/front', 'disputes']);
+    if (!this.selectedContract || !this.currentUser) {
+      this.router.navigate(['/front', 'disputes']);
+      return;
+    }
+    const otherUserId =
+      this.currentUser.id === this.selectedContract.clientId
+        ? this.selectedContract.freelancerId
+        : this.selectedContract.clientId;
+
+    this.router.navigate(['/front', 'disputes'], {
+      queryParams: {
+        contractId: this.selectedContract.id,
+        contactUserId: otherUserId,
+        openCreate: '1',
+      },
+    });
   }
 
   // ── STATS ─────────────────────────────────────────────────────────────────

@@ -197,3 +197,23 @@ export interface DisputeInsightsResponse {
   evidenceStrength: EvidenceStrength[];
   raisedByTrust: TrustScore;
 }
+
+/** Requête batch pour media-analysis-service POST /api/media/analyze-batch */
+export interface AnalyzeMediaItemRequest {
+  evidenceId: number;
+  /** Chemin relatif, ex. {@code /messages/attachments/uuid.jpg} */
+  resourcePath: string;
+}
+
+/** Réponse d’analyse média (alignée sur {@code MediaAnalysisResultDto} côté Java). */
+export interface MediaAnalysisResultDto {
+  evidenceId: number;
+  mediaType?: string;
+  width?: number;
+  height?: number;
+  fileSizeBytes?: number;
+  pdfPageCount?: number;
+  textSampleChars?: number;
+  intrinsicQualityScore?: number;
+  error?: string | null;
+}
