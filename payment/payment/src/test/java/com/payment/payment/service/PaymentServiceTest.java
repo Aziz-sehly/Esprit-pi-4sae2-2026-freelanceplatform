@@ -1,6 +1,7 @@
 package com.payment.payment.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.payment.payment.client.ContractClient;
 import com.payment.payment.client.MilestoneClient;
 import com.payment.payment.client.UserClient;
 import com.payment.payment.dto.ContractSummary;
@@ -33,6 +34,8 @@ class PaymentServiceTest {
     @Mock
     private PaymentRepository repo;
     @Mock
+    private ContractClient contractClient;
+    @Mock
     private MilestoneClient milestoneClient;
     @Mock
     private UserClient userClient;
@@ -60,7 +63,7 @@ class PaymentServiceTest {
         UserSummary freelancer = new UserSummary(6L, "freelancer@test.com", "Free", "Lancer", true, true);
 
         when(repo.findById(12L)).thenReturn(Optional.of(payment));
-        when(milestoneClient.getContract(9L, "Bearer token")).thenReturn(contract);
+        when(contractClient.getContract(9L, "Bearer token")).thenReturn(contract);
         when(jwtIdentityService.parseRequired("Bearer token")).thenReturn(actor);
         when(repo.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userClient.getUserById(6L)).thenReturn(freelancer);
