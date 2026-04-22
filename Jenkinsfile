@@ -22,7 +22,7 @@
                         'gateway', 'eureka_server', 'microservice_user', 'microservice_contract',
                         'Microservice_project', 'Microservice_proposal', 'microservice_service',
                         'dispute-service', 'media-analysis-service', 'message-service',
-                        'milestone', 'payment'
+                        'milestone/milestone', 'payment/payment'
                     ]
                     services.each { svc ->
                         dir(svc) { sh 'mvn clean package -DskipTests' }
@@ -46,8 +46,8 @@
                         'dispute-service'       : 'dispute-service',
                         'media-analysis-service': 'media-service',
                         'message-service'       : 'message-service',
-                        'milestone'             : 'milestone',
-                        'payment'               : 'payment'
+                        'milestone/milestone'             : 'milestone',
+                        'payment/payment'               : 'payment'
                     ]
                     serviceKeys.each { folder, key ->
                         // Run analysis and wait for its own quality gate — one per service
@@ -86,8 +86,8 @@
                         'dispute-service'       : 'dispute-service',
                         'media-analysis-service': 'media-analysis-service',
                         'message-service'       : 'message-service',
-                        'milestone'             : 'milestone',
-                        'payment'               : 'payment'
+                        'milestone/milestone'             : 'milestone',
+                        'payment/payment'               : 'payment'
                     ]
                     docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDS) {
                         services.each { folder, tag ->
