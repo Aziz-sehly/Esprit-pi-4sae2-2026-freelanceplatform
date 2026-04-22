@@ -1,0 +1,113 @@
+﻿# ── Shared env for all microservices ──────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-env
+  namespace: pidev
+data:
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8761/eureka
+  SPRING_JPA_HIBERNATE_DDL_AUTO: update
+  SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+  JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:ActiveProcessorCount=2 -XX:+UseG1GC"
+---
+# ── MySQL init script ─────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-initdb
+  namespace: pidev
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS user_db;
+    CREATE DATABASE IF NOT EXISTS contract_db;
+    CREATE DATABASE IF NOT EXISTS project_db;
+    CREATE DATABASE IF NOT EXISTS proposal_db;
+    CREATE DATABASE IF NOT EXISTS service_db;
+    CREATE DATABASE IF NOT EXISTS dispute_db;
+    CREATE DATABASE IF NOT EXISTS media_db;
+    CREATE DATABASE IF NOT EXISTS message_db;
+    CREATE DATABASE IF NOT EXISTS milestone_db;
+    CREATE DATABASE IF NOT EXISTS payment_db;
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: pidev
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          args:
+            - --innodb-buffer-pool-size=256M
+            - --max-connections=200
+            - --innodb-flush-log-at-trx-commit=2
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+            initialDelaySeconds: 20
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+        - name: initdb
+          configMap:
+            name: mysql-initdb
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: pidev
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306

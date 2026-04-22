@@ -5,13 +5,11 @@ FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
 
 WORKDIR /app
 
-# Copy pom.xml first (for layer caching)
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy everything
+COPY . .
 
-# Copy source and build JAR
-COPY src ./src
-RUN mvn clean package -DskipTests -B
+# Build JAR (skip tests completely)
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true -B
 
 # ============================================
 # STAGE 2: Runtime with JRE
