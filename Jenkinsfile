@@ -25,7 +25,7 @@ pipeline {
                         'milestone/milestone', 'payment/payment'
                     ]
                     services.each { svc ->
-                        dir(svc) { sh 'mvn clean package -DskipTests' }
+                        dir(svc) { sh 'mvn clean package -DskipTests -Dmaven.test.skip=true' }
                     }
                 }
             }
