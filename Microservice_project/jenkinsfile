@@ -1,11 +1,12 @@
 pipeline {
-    // ------------------------------------------------------------
-    // 1. Agent Docker avec Maven + JDK 17 (plus besoin de tools)
-    // ------------------------------------------------------------
+    // ==========================================
+    // 1. AGENT DOCKER MAVEN (CORRECTION MAGIQUE)
+    // ==========================================
     agent {
         docker {
             image 'maven:3.9.6-eclipse-temurin-17'
-            args '-v /var/run/docker.sock:/var/run/docker.sock -v maven-repo:/root/.m2'
+            // Montage du cache Maven ($HOME/.m2) et du socket Docker pour la construction
+            args '-v $HOME/.m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -15,7 +16,7 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_USER  = 'azizsehli'
+        DOCKERHUB_USER  = 'azizsehly'
         DOCKERHUB_CREDS = 'dockerhub-credentials'
         K8S_NAMESPACE   = 'pidev'
         IMAGE_TAG       = "${env.BUILD_NUMBER}"
@@ -23,39 +24,24 @@ pipeline {
         SERVICE_TAG     = 'microservice-project'
         SONAR_KEY       = 'project-service'
         K8S_DEPLOYMENT  = 'project-service'
-
-        // Optimisation Maven : utilise le cache persistant et saute les tests définitivement
-        MAVEN_OPTS      = '-Dmaven.repo.local=/root/.m2/repository'
     }
 
     stages {
-
-        // --------------------------------------------------------
-        // Étape 1 : Checkout (rapide)
-        // --------------------------------------------------------
         stage('Checkout (FAST)') {
             steps {
                 checkout scm
             }
         }
 
-        // --------------------------------------------------------
-        // Étape 2 : Maven Build (avec cache et sans tests)
-        // --------------------------------------------------------
         stage('Maven Build (FAST)') {
             steps {
                 dir("${SERVICE_FOLDER}") {
-                    // On évite "clean" pour garder le cache des classes compilées
-                    // On utilise -T 2C pour parallélisation
-                    // On skip les tests (compilation + exécution)
-                    sh 'mvn -T 2C package -Dmaven.test.skip=true'
+                    // Avec le cache Maven monté, plus besoin de re-télécharger les dépendances à chaque fois
+                    sh 'mvn -T 2C clean package -DskipTests'
                 }
             }
         }
 
-        // --------------------------------------------------------
-        // Étape 3 : SonarQube
-        // --------------------------------------------------------
         stage('SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -70,9 +56,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------------
-        // Étape 4 : Quality Gate
-        // --------------------------------------------------------
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -81,9 +64,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------------
-        // Étape 5 : Docker Build & Push
-        // --------------------------------------------------------
         stage('Docker Build & Push') {
             steps {
                 script {
@@ -98,9 +78,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------------
-        // Étape 6 : Deploy to Kubernetes
-        // --------------------------------------------------------
         stage('Deploy to Kubernetes') {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
@@ -116,9 +93,6 @@ pipeline {
         }
     }
 
-    // --------------------------------------------------------
-    // Nettoyage obligatoire (gardé)
-    // --------------------------------------------------------
     post {
         always {
             cleanWs()
