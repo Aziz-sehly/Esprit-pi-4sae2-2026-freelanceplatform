@@ -1,0 +1,92 @@
+<div class="page">
+  <div class="hero">
+    <div class="hero-inner">
+      <div>
+        <h1>Available projects</h1>
+        <p>Browse projects, find missions and submit your proposals. Click on a project to see details and send a proposal.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+    <aside class="filters">
+      <div class="filters-head">
+        <h3>Filters</h3>
+        <button type="button" class="link" (click)="clear()">Clear</button>
+      </div>
+
+      <label class="field">
+        <span>Search</span>
+        <input [(ngModel)]="filters.query" (input)="load()" placeholder="keywords title/description" />
+      </label>
+
+      <label class="field">
+        <span>Category</span>
+        <select [(ngModel)]="filters.category" (change)="load()">
+          <option [ngValue]="undefined">All</option>
+          <option *ngFor="let c of categories" [ngValue]="c">{{ c }}</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Status</span>
+        <select [(ngModel)]="filters.status" (change)="load()">
+          <option [ngValue]="undefined">All</option>
+          <option *ngFor="let s of statusOptions" [ngValue]="s.value">{{ s.label }}</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Experience</span>
+        <select [(ngModel)]="filters.experienceLevel" (change)="load()">
+          <option [ngValue]="undefined">All</option>
+          <option *ngFor="let e of experienceOptions" [ngValue]="e.value">{{ e.label }}</option>
+        </select>
+      </label>
+
+      <div class="grid2">
+        <label class="field">
+          <span>Min budget</span>
+          <input type="number" [(ngModel)]="filters.budgetMin" (input)="load()" />
+        </label>
+        <label class="field">
+          <span>Max budget</span>
+          <input type="number" [(ngModel)]="filters.budgetMax" (input)="load()" />
+        </label>
+      </div>
+    </aside>
+
+    <section class="list">
+      <div class="meta" *ngIf="!loading">
+        <span class="count">{{ total }}</span> project{{ total > 1 ? 's' : '' }}
+        <span class="hint">— Click to see details and submit a proposal</span>
+      </div>
+
+      <div *ngIf="loading" class="loading">Loading...</div>
+
+      <div class="cards" *ngIf="!loading">
+        <article class="card card-freelancer" *ngFor="let p of projects" (click)="open(p.id)">
+          <div class="card-top">
+            <h3>{{ p.title }}</h3>
+            <div class="budget">
+              <span class="amount">${{ p.budgetMin }} - ${{ p.budgetMax }}</span>
+              <span class="pill">{{ p.status }}</span>
+            </div>
+          </div>
+          <p class="desc">{{ p.description }}</p>
+          <div class="skills">
+            <span class="tag" *ngFor="let s of p.skills.slice(0, 5)">{{ s }}</span>
+            <span class="tag more" *ngIf="p.skills.length > 5">+{{ p.skills.length - 5 }}</span>
+          </div>
+          <div class="bottom">
+            <span class="muted">Exp: {{ p.experienceLevel }}</span>
+            <span class="muted">{{ p.proposalsCount ?? 0 }} proposal(s)</span>
+            <span class="muted">Deadline: {{ p.deadline | date: 'yyyy-MM-dd' }}</span>
+          </div>
+          <div class="card-cta">Submit a proposal →</div>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>
+

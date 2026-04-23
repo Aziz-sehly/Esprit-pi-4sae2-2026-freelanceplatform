@@ -1,0 +1,633 @@
+﻿# ── user-service ──────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: faresjebali/pidev_microservices:microservice-user
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/user_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: pidev
+spec:
+  selector:
+    app: user-service
+  ports:
+    - port: 8081
+      targetPort: 8080
+---
+# ── contract-service ──────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contract-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contract-service
+  template:
+    metadata:
+      labels:
+        app: contract-service
+    spec:
+      containers:
+        - name: contract-service
+          image: faresjebali/pidev_microservices:microservice-contract
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/contract_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contract-service
+  namespace: pidev
+spec:
+  selector:
+    app: contract-service
+  ports:
+    - port: 8082
+      targetPort: 8080
+---
+# ── project-service ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project-service
+  template:
+    metadata:
+      labels:
+        app: project-service
+    spec:
+      containers:
+        - name: project-service
+          image: faresjebali/pidev_microservices:microservice-project
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/project_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: project-service
+  namespace: pidev
+spec:
+  selector:
+    app: project-service
+  ports:
+    - port: 8083
+      targetPort: 8080
+---
+# ── proposal-service ──────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proposal-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proposal-service
+  template:
+    metadata:
+      labels:
+        app: proposal-service
+    spec:
+      containers:
+        - name: proposal-service
+          image: faresjebali/pidev_microservices:microservice-proposal
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/proposal_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proposal-service
+  namespace: pidev
+spec:
+  selector:
+    app: proposal-service
+  ports:
+    - port: 8084
+      targetPort: 8080
+---
+# ── service-ms ────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-ms
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-ms
+  template:
+    metadata:
+      labels:
+        app: service-ms
+    spec:
+      containers:
+        - name: service-ms
+          image: faresjebali/pidev_microservices:microservice-service
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/service_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-ms
+  namespace: pidev
+spec:
+  selector:
+    app: service-ms
+  ports:
+    - port: 8085
+      targetPort: 8080
+---
+# ── dispute-service ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dispute-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dispute-service
+  template:
+    metadata:
+      labels:
+        app: dispute-service
+    spec:
+      containers:
+        - name: dispute-service
+          image: faresjebali/pidev_microservices:dispute-service
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/dispute_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: DISPUTE_DB_URL
+              value: jdbc:mysql://mysql:3306/dispute_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dispute-service
+  namespace: pidev
+spec:
+  selector:
+    app: dispute-service
+  ports:
+    - port: 8086
+      targetPort: 8080
+---
+# ── media-service ─────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-service
+  template:
+    metadata:
+      labels:
+        app: media-service
+    spec:
+      containers:
+        - name: media-service
+          image: faresjebali/pidev_microservices:media-analysis-service
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/media_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+  namespace: pidev
+spec:
+  selector:
+    app: media-service
+  ports:
+    - port: 8087
+      targetPort: 8080
+---
+# ── message-service ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-service
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+    spec:
+      containers:
+        - name: message-service
+          image: faresjebali/pidev_microservices:message-service
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/message_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: MESSAGE_DB_URL
+              value: jdbc:mysql://mysql:3306/message_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-service
+  namespace: pidev
+spec:
+  selector:
+    app: message-service
+  ports:
+    - port: 8088
+      targetPort: 8080
+---
+# ── milestone ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: milestone
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: milestone
+  template:
+    metadata:
+      labels:
+        app: milestone
+    spec:
+      containers:
+        - name: milestone
+          image: faresjebali/pidev_microservices:milestone
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/milestone_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: milestone
+  namespace: pidev
+spec:
+  selector:
+    app: milestone
+  ports:
+    - port: 8089
+      targetPort: 8080
+---
+# ── payment ───────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: pidev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+    spec:
+      containers:
+        - name: payment
+          image: faresjebali/pidev_microservices:payment
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: common-env
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/payment_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: password
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "100m"
+            limits:
+              memory: "384Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: pidev
+spec:
+  selector:
+    app: payment
+  ports:
+    - port: 8091
+      targetPort: 8080

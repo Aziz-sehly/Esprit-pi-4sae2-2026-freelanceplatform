@@ -1,0 +1,91 @@
+.contracts-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.hero {
+  padding: 1.8rem;
+  border-radius: 32px;
+  background: linear-gradient(140deg, #101b42, #19367a 58%, #0f9d6c 140%);
+  color: white;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  opacity: 0.76;
+}
+
+h1, h2 {
+  margin: 0;
+}
+
+.banner {
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  background: rgba(15, 157, 108, 0.12);
+  color: #0e6d50;
+}
+
+.banner.error {
+  background: rgba(209, 79, 93, 0.12);
+  color: #8b2231;
+}
+
+.contract-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.contract-card {
+  border-radius: 28px;
+  padding: 1rem;
+  background: linear-gradient(155deg, rgba(255,255,255,0.97), rgba(246,249,255,0.95));
+}
+
+.contract-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.contract-top p {
+  margin: 0.45rem 0 0;
+  color: #5f6580;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.meta-grid div {
+  border-radius: 18px;
+  padding: 0.9rem;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.meta-grid span {
+  display: block;
+  color: #6d7393;
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

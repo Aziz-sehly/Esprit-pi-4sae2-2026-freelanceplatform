@@ -1,0 +1,157 @@
+.history-card {
+  border-radius: 28px;
+  padding: 1.35rem;
+  background: linear-gradient(155deg, rgba(255,255,255,0.96), rgba(247,250,255,0.96));
+}
+
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  color: #6d7393;
+}
+
+h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #0d1635;
+}
+
+.history-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.history-refresh {
+  justify-self: end;
+  background: rgba(13, 22, 53, 0.06);
+  color: #32405f;
+}
+
+.history-refresh svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 1rem 0;
+}
+
+.history-stats div,
+.payment-item,
+.payment-grid div {
+  border-radius: 20px;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.history-stats div {
+  padding: 1rem;
+}
+
+.history-stats span,
+.payment-grid span {
+  display: block;
+  color: #6d7393;
+  font-size: 0.8rem;
+}
+
+.history-stats strong,
+.payment-grid strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #0d1635;
+}
+
+.error-banner {
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(209, 79, 93, 0.12);
+  color: #8b2231;
+}
+
+.payment-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.payment-item {
+  padding: 1rem;
+}
+
+.payment-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.payment-top h4 {
+  margin: 0;
+  color: #111b3d;
+}
+
+.payment-top p {
+  margin: 0.25rem 0 0;
+  color: #6d7393;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.payment-grid div {
+  padding: 0.9rem;
+}
+
+.payment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.payment-list .mat-mdc-paginator {
+  border-radius: 18px;
+  background: rgba(13, 22, 53, 0.04);
+}
+
+.empty-state {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #6d7393;
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  font-size: 2rem;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .history-stats,
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
