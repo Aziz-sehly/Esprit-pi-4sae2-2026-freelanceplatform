@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER   = 'faresjebali'
+        DOCKERHUB_USER   = 'azizsehli'
         DOCKERHUB_CREDS  = 'dockerhub-credentials'
         SONARQUBE_SERVER = 'SonarQube'
         K8S_NAMESPACE    = 'pidev'
