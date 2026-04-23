@@ -50,7 +50,7 @@ pipeline {
                         'payment/payment'               : 'payment'
                     ]
                     serviceKeys.each { folder, key ->
-                        // Run analysis and wait for its own quality gate — one per service
+                        // Run analysis and wait for its own quality gate ï¿½ one per service
                         withSonarQubeEnv('SonarQube') {
                             dir(folder) {
                                 sh """
@@ -62,8 +62,8 @@ pipeline {
                                 """
                             }
                         }
-                        // Gate checked immediately after each service — catches every failure
-                        timeout(time: 5, unit: 'MINUTES') {
+                        // Gate checked immediately after each service ï¿½ catches every failure
+                        timeout(time: 10, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
                     }
@@ -141,7 +141,7 @@ pipeline {
 
     post {
         success { echo "Build #${env.BUILD_NUMBER} deployed successfully to Kubernetes." }
-        failure { echo "Build #${env.BUILD_NUMBER} failed — check logs above." }
+        failure { echo "Build #${env.BUILD_NUMBER} failed ï¿½ check logs above." }
         always  { cleanWs() }
     }
 }
