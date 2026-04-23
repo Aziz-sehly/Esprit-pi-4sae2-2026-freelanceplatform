@@ -1,6 +1,14 @@
 pipeline {
     agent any
 
+    // ============================================================
+    // 1. Déclaration des outils (Maven & JDK) à utiliser
+    // ============================================================
+    tools {
+        maven 'Maven-3'      // Nom à configurer dans Jenkins > Global Tool Configuration
+        jdk   'JDK-17'       // Nom à configurer dans Jenkins > Global Tool Configuration
+    }
+
     options {
         skipDefaultCheckout(true)   // accélère le checkout
         timestamps()
@@ -88,10 +96,10 @@ pipeline {
 
     post {
         always {
-            cleanWs()   // nettoie l'espace de travail (déjà présent)
+            cleanWs()
         }
         success {
-            echo "✅ PIPULE RÉUSSI : toutes les étapes sont passées avec succès !"
+            echo "✅ PIPELINE RÉUSSI : toutes les étapes sont passées avec succès !"
         }
         failure {
             echo "❌ PIPELINE ÉCHOUÉ. Veuillez consulter les logs ci-dessus pour identifier l'erreur."
