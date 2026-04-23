@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: eureka
-          image: faresjebali/pidev_microservices:eureka-server
+          image: azizsehli/pidev_microservices:eureka-server
           ports:
             - containerPort: 8761
           resources:

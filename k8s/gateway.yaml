@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: faresjebali/pidev_microservices:gateway
+          image: azizsehli/pidev_microservices:gateway
           ports:
             - containerPort: 8080
           env:

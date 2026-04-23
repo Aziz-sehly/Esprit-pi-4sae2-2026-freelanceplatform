@@ -50,7 +50,7 @@ services:
 
   # ── Eureka ─────────────────────────────────────────
   eureka:
-    image: faresjebali/pidev_microservices:eureka-server
+    image: azizsehli/pidev_microservices:eureka-server
     container_name: eureka
     ports:
       - "8761:8761"
@@ -65,7 +65,7 @@ services:
 
   # ── Gateway ────────────────────────────────────────
   gateway:
-    image: faresjebali/pidev_microservices:gateway
+    image: azizsehli/pidev_microservices:gateway
     container_name: gateway
     ports:
       - "8080:8080"
@@ -83,7 +83,7 @@ services:
 
   # ── Microservices ──────────────────────────────────
   user-service:
-    image: faresjebali/pidev_microservices:microservice-user
+    image: azizsehli/pidev_microservices:microservice-user
     container_name: user-service
     ports:
       - "8081:8080"
@@ -96,7 +96,7 @@ services:
     <<: *common-deploy
 
   contract-service:
-    image: faresjebali/pidev_microservices:microservice-contract
+    image: azizsehli/pidev_microservices:microservice-contract
     container_name: contract-service
     ports:
       - "8082:8080"
@@ -109,7 +109,7 @@ services:
     <<: *common-deploy
 
   project-service:
-    image: faresjebali/pidev_microservices:microservice-project
+    image: azizsehli/pidev_microservices:microservice-project
     container_name: project-service
     ports:
       - "8083:8080"
@@ -122,7 +122,7 @@ services:
     <<: *common-deploy
 
   proposal-service:
-    image: faresjebali/pidev_microservices:microservice-proposal
+    image: azizsehli/pidev_microservices:microservice-proposal
     container_name: proposal-service
     ports:
       - "8084:8080"
@@ -135,7 +135,7 @@ services:
     <<: *common-deploy
 
   service-ms:
-    image: faresjebali/pidev_microservices:microservice-service
+    image: azizsehli/pidev_microservices:microservice-service
     container_name: service-ms
     ports:
       - "8085:8080"
@@ -148,7 +148,7 @@ services:
     <<: *common-deploy
 
   dispute-service:
-    image: faresjebali/pidev_microservices:dispute-service
+    image: azizsehli/pidev_microservices:dispute-service
     container_name: dispute-service
     ports:
       - "8086:8080"
@@ -163,7 +163,7 @@ services:
     <<: *common-deploy
 
   media-service:
-    image: faresjebali/pidev_microservices:media-analysis-service
+    image: azizsehli/pidev_microservices:media-analysis-service
     container_name: media-service
     ports:
       - "8087:8080"
@@ -176,7 +176,7 @@ services:
     <<: *common-deploy
 
   message-service:
-    image: faresjebali/pidev_microservices:message-service
+    image: azizsehli/pidev_microservices:message-service
     container_name: message-service
     ports:
       - "8088:8080"
@@ -191,7 +191,7 @@ services:
     <<: *common-deploy
 
   milestone:
-    image: faresjebali/pidev_microservices:milestone
+    image: azizsehli/pidev_microservices:milestone
     container_name: milestone
     ports:
       - "8089:8080"
@@ -204,7 +204,7 @@ services:
     <<: *common-deploy
 
   payment:
-    image: faresjebali/pidev_microservices:payment
+    image: azizsehli/pidev_microservices:payment
     container_name: payment
     ports:
       - "8091:8080"
