@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_USER  = 'azizsehly'
+        DOCKERHUB_USER  = 'azizsehli'
         DOCKERHUB_CREDS = 'dockerhub-credentials'
         K8S_NAMESPACE   = 'pidev'
         IMAGE_TAG       = "${env.BUILD_NUMBER}"
