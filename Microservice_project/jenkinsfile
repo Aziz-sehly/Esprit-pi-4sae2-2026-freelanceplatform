@@ -2,7 +2,7 @@ pipeline {
     // ==========================================
     // 1. AGENT DOCKER MAVEN (CORRECTION MAGIQUE)
     // ==========================================
-    agent {
+    agent any {
         docker {
             image 'maven:3.9.6-eclipse-temurin-17'
             // Montage du cache Maven ($HOME/.m2) et du socket Docker pour la construction
