@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKERHUB_USER  = 'azizsehli'
-        DOCKERHUB_CREDS = 'dockerhub-credentials'
+        DOCKERHUB_CREDS = 'dockerhub'
         K8S_NAMESPACE   = 'pidev'
         IMAGE_TAG       = "${env.BUILD_NUMBER}"
         SERVICE_FOLDER  = 'Microservice_project'
