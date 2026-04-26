@@ -1,14 +1,5 @@
 pipeline {
-    // ==========================================
-    // 1. AGENT DOCKER MAVEN (CORRECTION MAGIQUE)
-    // ==========================================
-    agent any {
-        docker {
-            image 'maven:3.9.6-eclipse-temurin-17'
-            // Montage du cache Maven ($HOME/.m2) et du socket Docker pour la construction
-            args '-v $HOME/.m2:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any  // ✅ FIXED - just this, no docker block
 
     options {
         skipDefaultCheckout(true)
@@ -27,22 +18,34 @@ pipeline {
     }
 
     stages {
-        stage('Checkout (FAST)') {
+        stage('Checkout SCM') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Maven Build (FAST)') {
+        stage('Maven Build') {
             steps {
                 dir("${SERVICE_FOLDER}") {
-                    // Avec le cache Maven monté, plus besoin de re-télécharger les dépendances à chaque fois
-                    sh 'mvn -T 2C clean package -DskipTests'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
-        stage('SonarQube') {
+        stage('Unit Tests') {
+            steps {
+                dir("${SERVICE_FOLDER}") {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     dir("${SERVICE_FOLDER}") {
@@ -94,14 +97,8 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo "✅ PIPELINE RÉUSSI - Build accéléré !"
-        }
-        failure {
-            echo "❌ PIPELINE ÉCHOUÉ - Vérifiez les logs"
-        }
+        always { cleanWs() }
+        success { echo "✅ PIPELINE RÉUSSI!" }
+        failure { echo "❌ PIPELINE ÉCHOUÉ - Vérifiez les logs" }
     }
 }
