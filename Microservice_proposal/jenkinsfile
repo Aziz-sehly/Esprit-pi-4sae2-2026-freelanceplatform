@@ -67,18 +67,18 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDS) {
-                        def image = docker.build(
-                            "${DOCKERHUB_USER}/${SERVICE_TAG}:${IMAGE_TAG}",
-                            "${SERVICE_FOLDER}"
-                        )
-                        image.push()
-                    }
-                }
-            }
-        }
+                   steps {
+                       script {
+                           docker.withRegistry('https://index.docker.io/v1/', DOCKERHUB_CREDS) {
+                               def image = docker.build(
+                                   "${DOCKERHUB_USER}/${SERVICE_TAG}:${IMAGE_TAG}",
+                                    "Microservice_proposal"
+                               )
+                               image.push()
+                           }
+                       }
+                   }
+               }
     }
 
     post {
