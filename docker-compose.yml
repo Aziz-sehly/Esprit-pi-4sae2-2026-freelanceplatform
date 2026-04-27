@@ -1,0 +1,160 @@
+services:
+  eureka:
+    build:
+      context: ./eureka/eureka
+      dockerfile: Dockerfile
+    image: prolance/eureka:local
+    container_name: eureka
+    ports:
+      - "8761:8761"
+
+  user-db:
+    image: mysql:8.0
+    container_name: user-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: prolance_users
+    ports:
+      - "3307:3306"
+    volumes:
+      - user-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  payment-db:
+    image: mysql:8.0
+    container_name: payment-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payement_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - payment-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  milestone-db:
+    image: mysql:8.0
+    container_name: milestone-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: milestone_db
+    ports:
+      - "3309:3306"
+    volumes:
+      - milestone-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  microservice-user:
+    build:
+      context: ./microservice_user
+      dockerfile: Dockerfile
+    image: prolance/microservice-user:local
+    container_name: microservice-user
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@example.com}
+    depends_on:
+      eureka:
+        condition: service_started
+      user-db:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+
+  milestone-service:
+    build:
+      context: ./milestone/milestone
+      dockerfile: Dockerfile
+    image: prolance/milestone:local
+    container_name: milestone-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+    depends_on:
+      eureka:
+        condition: service_started
+      milestone-db:
+        condition: service_healthy
+      microservice-user:
+        condition: service_started
+    ports:
+      - "8081:8081"
+
+  payment-service:
+    build:
+      context: ./payment/payment
+      dockerfile: Dockerfile
+    image: prolance/payment:local
+    container_name: payment-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-no-reply@example.com}
+    depends_on:
+      eureka:
+        condition: service_started
+      payment-db:
+        condition: service_healthy
+      milestone-service:
+        condition: service_started
+      microservice-user:
+        condition: service_started
+    ports:
+      - "8082:8082"
+
+  api-gateway:
+    build:
+      context: ./api-gateway/api-gateway
+      dockerfile: Dockerfile
+    image: prolance/api-gateway:local
+    container_name: api-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      eureka:
+        condition: service_started
+      microservice-user:
+        condition: service_started
+      milestone-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    ports:
+      - "8089:8089"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: prolance/web:local
+    container_name: web
+    depends_on:
+      api-gateway:
+        condition: service_started
+    ports:
+      - "4200:80"
+
+volumes:
+  user-db-data:
+  payment-db-data:
+  milestone-db-data:

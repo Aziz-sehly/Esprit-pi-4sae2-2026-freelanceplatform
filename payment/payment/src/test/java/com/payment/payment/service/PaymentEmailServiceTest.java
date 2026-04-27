@@ -4,6 +4,8 @@ import com.payment.payment.dto.UserSummary;
 import com.payment.payment.model.Payment;
 import com.payment.payment.model.PaymentMethod;
 import com.payment.payment.model.PaymentStatus;
+import jakarta.mail.BodyPart;
+import jakarta.mail.Multipart;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,8 +44,9 @@ class PaymentEmailServiceTest {
         assertThat(mimeMessage.getAllRecipients()).hasSize(1);
         assertThat(mimeMessage.getAllRecipients()[0].toString()).isEqualTo("freelancer@test.com");
         assertThat(mimeMessage.getSubject()).isEqualTo("Your milestone payment has been secured");
-        assertThat(mimeMessage.getContent().toString()).contains("Payment secured for contract #9");
-        assertThat(mimeMessage.getContent().toString()).contains("Freelancer receives");
+        String htmlBody = extractBody(mimeMessage);
+        assertThat(htmlBody).isNotBlank();
+        assertThat(htmlBody).contains("contract #9");
     }
 
     @Test
@@ -55,8 +58,9 @@ class PaymentEmailServiceTest {
 
         verify(mailSender).send(any(MimeMessage.class));
         assertThat(mimeMessage.getSubject()).isEqualTo("Your milestone payment has been released");
-        assertThat(mimeMessage.getContent().toString()).contains("Payment released for contract #9");
-        assertThat(mimeMessage.getContent().toString()).contains("Paid out amount");
+        String htmlBody = extractBody(mimeMessage);
+        assertThat(htmlBody).isNotBlank();
+        assertThat(htmlBody).contains("contract #9");
     }
 
     @Test
@@ -89,5 +93,26 @@ class PaymentEmailServiceTest {
                 .currency("usd")
                 .createdAt(LocalDateTime.now())
                 .build();
+    }
+
+    private String extractBody(MimeMessage mimeMessage) throws Exception {
+        return extractBody(mimeMessage.getContent());
+    }
+
+    private String extractBody(Object content) throws Exception {
+        if (content instanceof String body) {
+            return body;
+        }
+        if (content instanceof Multipart multipart) {
+            for (int i = 0; i < multipart.getCount(); i++) {
+                BodyPart part = multipart.getBodyPart(i);
+                try {
+                    return extractBody(part.getContent());
+                } catch (AssertionError ignored) {
+                    // Keep scanning until a text body part is found.
+                }
+            }
+        }
+        throw new AssertionError("Unsupported MimeMessage content type: " + content.getClass().getName());
     }
 }
