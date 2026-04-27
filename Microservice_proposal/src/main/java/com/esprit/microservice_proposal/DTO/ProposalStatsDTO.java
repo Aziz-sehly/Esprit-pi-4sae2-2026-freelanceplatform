@@ -17,4 +17,6 @@ public class ProposalStatsDTO {
     private double  avgProposedPrice;
     private double  avgDeliveryDays;
     private long    avgResponseTimeHours; // createdAt → expiresAt
+
+
 }
