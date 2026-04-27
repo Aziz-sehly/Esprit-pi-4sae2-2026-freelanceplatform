@@ -76,9 +76,23 @@ jobs:
       matrix:
         include:
           - service: payment
-            working_directory: payment/payment
+            context: ./payment/payment
+            dockerfile: ./payment/payment/Dockerfile
           - service: milestone
-            working_directory: milestone/milestone
+            context: ./milestone/milestone
+            dockerfile: ./milestone/milestone/Dockerfile
+          - service: eureka
+            context: ./eureka/eureka
+            dockerfile: ./eureka/eureka/Dockerfile
+          - service: api-gateway
+            context: ./api-gateway/api-gateway
+            dockerfile: ./api-gateway/api-gateway/Dockerfile
+          - service: microservice-user
+            context: ./microservice_user
+            dockerfile: ./microservice_user/Dockerfile
+          - service: web
+            context: ./web
+            dockerfile: ./web/Dockerfile
     permissions:
       contents: read
       packages: write
@@ -92,8 +106,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./${{ matrix.working_directory }}
-          file: ./${{ matrix.working_directory }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: false
           tags: ${{ matrix.service }}:latest
 
