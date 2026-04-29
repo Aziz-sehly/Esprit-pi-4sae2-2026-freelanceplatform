@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'
+        jdk 'JDK17'
+    }
+
+    environment {
+        SERVICE_NAME = 'Reviews-Service'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo "Checking out ${SERVICE_NAME}..."
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo "Building ${SERVICE_NAME}..."
+                dir('Reviews-Service') {
+                    sh 'mvn clean compile -DskipTests'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo "Running unit tests for ${SERVICE_NAME}..."
+                dir('Reviews-Service') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit 'Reviews-Service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo "Packaging ${SERVICE_NAME}..."
+                dir('Reviews-Service') {
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "${SERVICE_NAME} pipeline completed successfully."
+        }
+        failure {
+            echo "${SERVICE_NAME} pipeline failed. Check the logs above."
+        }
+    }
+}

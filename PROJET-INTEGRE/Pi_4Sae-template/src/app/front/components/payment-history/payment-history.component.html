@@ -1,0 +1,62 @@
+<div class="card">
+    <div class="top">
+        <h3>Payment History</h3>
+
+        <div class="filters">
+            <input
+                type="number"
+                min="1"
+                placeholder="Milestone ID (optional)"
+                [(ngModel)]="milestoneId"
+            />
+
+            <button class="secondary" (click)="clearFilter()" [disabled]="loading || !milestoneId">
+                Clear
+            </button>
+            <button (click)="load()" [disabled]="loading">Refresh</button>
+        </div>
+    </div>
+
+    <div *ngIf="successMsg" class="alert success">{{ successMsg }}</div>
+    <div *ngIf="errorMsg" class="alert error">{{ errorMsg }}</div>
+
+    <div *ngIf="loading" class="muted">Loading...</div>
+
+    <table class="table" *ngIf="!loading">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Contract</th>
+                <th>Milestone</th>
+                <th>Amount</th>
+                <th>Fee</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Provider</th>
+                <th>Date</th>
+                <th style="width: 100px;">Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr *ngFor="let p of payments">
+                <td>{{ p.id }}</td>
+                <td>{{ p.contractId }}</td>
+                <td>{{ p.milestoneId ?? '-' }}</td>
+                <td>{{ p.amount | number:'1.2-2' }}</td>
+                <td>{{ p.platformFee | number:'1.2-2' }}</td>
+                <td>{{ p.method }}</td>
+                <td><span [class]="statusClass(p.status)">{{ p.status }}</span></td>
+                <td>{{ p.provider }}</td>
+                <td>{{ p.createdAt | date:'medium' }}</td>
+                <td>
+                    <button class="danger" (click)="remove(p)" [disabled]="loading">Delete</button>
+                </td>
+            </tr>
+
+            <tr *ngIf="payments.length === 0">
+                <td colspan="10" class="muted center">No payments.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

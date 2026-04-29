@@ -1,0 +1,41 @@
+<div class="app-container">
+  <header class="main-header">
+    <div class="header-content">
+      <a routerLink="/front" class="logo">Prolance</a>
+      
+      <nav class="main-nav">
+        <a routerLink="/front" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+        <a routerLink="/front/messages" routerLinkActive="active" *ngIf="authService.isAuthenticated()">Messages</a>
+        <a routerLink="/front/disputes" routerLinkActive="active" *ngIf="authService.isAuthenticated()">Disputes</a>
+        <a routerLink="/front/forum" routerLinkActive="active">Forum</a>
+        <a routerLink="/front/reviews" routerLinkActive="active">Reviews</a>
+      </nav>
+
+      <div class="user-section">
+        <a routerLink="/front/login" class="btn btn-outline" *ngIf="!authService.isAuthenticated()">Login</a>
+        <a routerLink="/front/register" class="btn btn-primary" *ngIf="!authService.isAuthenticated()">Register</a>
+        <span class="user-name" *ngIf="authService.isAuthenticated()">{{ authService.getCurrentUser()?.email }}</span>
+        <button type="button" class="btn btn-outline" (click)="logout()" *ngIf="authService.isAuthenticated()">Logout</button>
+        <a routerLink="/back" class="btn btn-dashboard" *ngIf="authService.isAuthenticated() && authService.hasRole('admin')">Admin area</a>
+        <a routerLink="/back/admin-users" class="btn btn-dashboard" *ngIf="authService.isAuthenticated() && authService.hasRole('admin')">User management</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Prolance</h3>
+        <p>Connect with top freelancers. Get your projects done faster and more efficiently.</p>
+        <a routerLink="/front">Learn more</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 Prolance. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

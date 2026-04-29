@@ -1,0 +1,106 @@
+<div class="wrap">
+  <div class="head">
+    <h1>Dispute Management (Admin)</h1>
+    <p>{{ disputes.length }} dispute(s) found</p>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Contract ID</label>
+      <input type="number" [(ngModel)]="filterContractId" placeholder="Ex: 1" (keyup.enter)="applyFilter()" />
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select [(ngModel)]="filterStatus" (change)="applyFilter()">
+        <option value="">All</option>
+        <option value="OPEN">Open</option>
+        <option value="IN_REVIEW">In review</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="REJECTED">Rejected</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Sort by</label>
+      <select [(ngModel)]="sortOrder" (change)="applyFilter()">
+        <option value="created">Newest first</option>
+        <option value="escalation">Escalation score (high → low)</option>
+      </select>
+    </div>
+    <button class="btn-filter" (click)="applyFilter()">Filter</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    Loading...
+  </div>
+
+  <div class="table" *ngIf="!loading">
+    <div class="row header">
+      <div>ID</div>
+      <div>Contract</div>
+      <div>Type</div>
+      <div>Status</div>
+      <div>Escalation</div>
+      <div>Created</div>
+      <div>Action</div>
+    </div>
+    <div class="row" *ngFor="let d of disputes">
+      <div>#{{ d.id }}</div>
+      <div>{{ d.contractId }}</div>
+      <div>{{ getDisputeTypeLabel(d.disputeType) }}</div>
+      <div>
+        <span class="status-badge" [class]="getStatusClass(d.status)">
+          {{ getStatusLabel(d.status) }}
+        </span>
+      </div>
+      <div>{{ escalationPercent(d) }}</div>
+      <div>{{ formatDate(d.createdAt) }}</div>
+      <div class="actions-cell">
+        <a [routerLink]="['/back/admin-disputes', d.id]" [queryParams]="{admin: 'true'}" class="btn-resolve">Resolve</a>
+        <a
+          [routerLink]="['/back/admin-disputes', d.id]"
+          [queryParams]="{admin: 'true'}"
+          [fragment]="'evidence'"
+          class="btn-evidence"
+        >
+          Evidence
+        </a>
+        <button type="button" class="btn-edit" (click)="startEdit(d)" title="Edit">✎</button>
+        <button type="button" class="btn-delete" (click)="deleteDispute(d)" title="Delete">×</button>
+      </div>
+    </div>
+    <div class="row empty" *ngIf="disputes.length === 0">
+      <div>No disputes</div>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div *ngIf="editingDispute" class="modal-overlay" (click)="cancelEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Edit dispute #{{ editingDispute.id }}</h3>
+      <div class="field">
+        <label>Type</label>
+        <select [(ngModel)]="editForm.disputeType">
+          <option value="QUALITY_ISSUE">Quality issue</option>
+          <option value="PAYMENT_ISSUE">Payment issue</option>
+          <option value="DELIVERY_ISSUE">Delivery issue</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <textarea [(ngModel)]="editForm.reason" rows="4"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="updating || !(editForm.reason || '').trim()">
+          {{ updating ? '...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

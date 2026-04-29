@@ -1,0 +1,85 @@
+<div class="wrap">
+  <!-- Header -->
+  <div class="head">
+    <h1>Gestion des Projets</h1>
+    <p>{{ projects.length }} projet(s) trouvé(s)</p>
+  </div>
+
+  <!-- Alert personnalisée -->
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading">
+    <div class="spinner"></div>
+    Chargement des projets...
+  </div>
+
+  <!-- Table -->
+  <div class="table" *ngIf="!loading">
+    <!-- En-tête -->
+    <div class="row header">
+      <div>TITRE</div>
+      <div>CATÉGORIE</div>
+      <div>BUDGET</div>
+      <div>DURÉE</div>
+      <div>EXPÉRIENCE</div>
+      <div>STATUT</div>
+      <div>DATE LIMITE</div>
+      <div>ACTIONS</div>
+    </div>
+
+    <!-- Lignes -->
+    <div class="row" *ngFor="let p of projects">
+      <!-- Titre avec tooltip complet -->
+      <div class="title" [title]="p.title">{{ p.title | truncate:30 }}</div>
+      
+      <!-- Catégorie -->
+      <div>{{ p.category || '-' }}</div>
+      
+      <!-- Budget -->
+      <div class="budget">
+        {{ p.budgetMin | number:'1.0-0' }} DT - {{ p.budgetMax | number:'1.0-0' }} DT
+      </div>
+      
+      <!-- Durée -->
+      <div>{{ p.duration || '-' }}</div>
+      
+      <!-- Expérience avec badge -->
+      <div>
+        <span class="exp-badge" [class]="getExperienceClass(p.experienceLevel)">
+          {{ getExperienceLabel(p.experienceLevel) }}
+        </span>
+      </div>
+      
+      <!-- Statut avec badge -->
+      <div>
+        <span class="status-badge" [class]="getStatusClass(p.status)" [title]="getStatusTooltip(p.status)">
+          {{ getStatusLabel(p.status) }}
+        </span>
+      </div>
+      
+      <!-- Date limite avec indication retard -->
+      <div class="deadline" [class.overdue]="isOverdue(p.deadline)">
+        {{ formatDate(p.deadline) }}
+        <span *ngIf="isOverdue(p.deadline)" class="overdue-badge" title="Projet en retard">⚠️</span>
+      </div>
+      
+<div class="actions">
+  <button 
+    type="button" 
+    class="btn-delete-fire" 
+    (click)="delete(p.id)" 
+    title="Supprimer ce projet">
+    🔥delete
+  </button>
+</div>
+    </div>
+
+    <!-- Message si aucun projet -->
+    <div class="row empty" *ngIf="projects.length === 0">
+      <div colspan="8">Aucun projet trouvé</div>
+    </div>
+  </div>
+</div>
