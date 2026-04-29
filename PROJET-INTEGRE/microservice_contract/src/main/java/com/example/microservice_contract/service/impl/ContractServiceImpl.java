@@ -1,0 +1,260 @@
+package com.example.microservice_contract.service.impl;
+
+import com.example.microservice_contract.dto.ContractDto;
+import com.example.microservice_contract.dto.ContractExtensionDto;
+import com.example.microservice_contract.dto.ContractSignatureDto;
+import com.example.microservice_contract.entity.Contract;
+import com.example.microservice_contract.Enum.ContractStatus;
+import com.example.microservice_contract.feign.ProposalClient;
+import com.example.microservice_contract.feign.UserClient;
+import com.example.microservice_contract.repository.IContractRepository;
+import com.example.microservice_contract.service.IContractService;
+import com.example.microservice_contract.service.IContractSignatureService;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+@Transactional
+public class ContractServiceImpl implements IContractService {
+
+    private final IContractRepository       contractRepository;
+    private final IContractSignatureService signatureService;
+    private final ProposalClient            proposalClient;
+    private final UserClient               userClient;
+
+    public ContractServiceImpl(IContractRepository contractRepository,
+                               @Lazy IContractSignatureService signatureService,
+                               ProposalClient proposalClient,
+                               UserClient userClient) {
+        this.contractRepository = contractRepository;
+        this.signatureService   = signatureService;
+        this.proposalClient     = proposalClient;
+        this.userClient         = userClient;
+    }
+
+    @Override
+    public ContractDto.Response createContract(ContractDto.CreateRequest request) {
+
+        String clientEmail     = request.getClientEmail();
+        String clientName      = request.getClientName();
+        String freelancerEmail = request.getFreelancerEmail();
+        String freelancerName  = request.getFreelancerName();
+
+        if (clientEmail == null || clientEmail.isBlank()) {
+            try {
+                UserClient.UserData client = userClient.getUserById(request.getClientId());
+                clientEmail = client.getEmail();
+                clientName  = client.getFullName();
+            } catch (Exception e) {
+                log.warn("Could not fetch client from user service: {}", e.getMessage());
+                clientEmail = "client" + request.getClientId() + "@prolance.com";
+                clientName  = "Client " + request.getClientId();
+            }
+        }
+
+        if (freelancerEmail == null || freelancerEmail.isBlank()) {
+            try {
+                UserClient.UserData freelancer = userClient.getUserById(request.getFreelancerId());
+                freelancerEmail = freelancer.getEmail();
+                freelancerName  = freelancer.getFullName();
+            } catch (Exception e) {
+                log.warn("Could not fetch freelancer from user service: {}", e.getMessage());
+                freelancerEmail = "freelancer" + request.getFreelancerId() + "@prolance.com";
+                freelancerName  = "Freelancer " + request.getFreelancerId();
+            }
+        }
+
+        Contract contract = Contract.builder()
+                .projectId(request.getProjectId())
+                .proposalId(request.getProposalId())
+                .freelancerId(request.getFreelancerId())
+                .clientId(request.getClientId())
+                .clientName(clientName)
+                .freelancerName(freelancerName)
+                .amount(request.getAmount())
+                .platformFeePercentage(request.getPlatformFeePercentage())
+                .paymentStructure(request.getPaymentStructure())
+                .status(ContractStatus.PENDING)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .description(request.getDescription())
+                // Store proposal milestone data for auto-creation on activation
+                .milestoneCount(request.getMilestoneCount())
+                .milestoneDetails(request.getMilestoneDetails())
+                .build();
+
+        Contract saved = contractRepository.save(contract);
+        log.info("Contract {} saved ({}), initiating signatures",
+                saved.getId(), saved.getPaymentStructure());
+
+        final String finalClientEmail     = clientEmail;
+        final String finalClientName      = clientName;
+        final String finalFreelancerEmail = freelancerEmail;
+        final String finalFreelancerName  = freelancerName;
+
+        initiateSignatures(saved,
+                request.getClientId(),     finalClientEmail,     finalClientName,
+                request.getFreelancerId(), finalFreelancerEmail, finalFreelancerName);
+
+        return toResponse(saved);
+    }
+
+    private void initiateSignatures(Contract contract,
+                                    Long clientId,     String clientEmail,     String clientName,
+                                    Long freelancerId, String freelancerEmail, String freelancerName) {
+
+        signatureService.initiateSignature(contract.getId(),
+                ContractSignatureDto.CreateRequest.builder()
+                        .signerId(clientId)
+                        .signerRole("CLIENT")
+                        .signerEmail(clientEmail)
+                        .signerName(clientName)
+                        .build());
+
+        try { Thread.sleep(3000); } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        signatureService.initiateSignature(contract.getId(),
+                ContractSignatureDto.CreateRequest.builder()
+                        .signerId(freelancerId)
+                        .signerRole("FREELANCER")
+                        .signerEmail(freelancerEmail)
+                        .signerName(freelancerName)
+                        .build());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getAllContracts() {
+        return contractRepository.findAll().stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public ContractDto.Response getContractById(Long id) {
+        return toResponse(findOrThrow(id));
+    }
+
+    @Override @Transactional(readOnly = true)
+    public ContractDto.Response getContractByProposalId(Long proposalId) {
+        return toResponse(contractRepository.findByProposalId(proposalId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Contract not found for proposal: " + proposalId)));
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByClient(Long clientId) {
+        return contractRepository.findByClientId(clientId).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByFreelancer(Long freelancerId) {
+        return contractRepository.findByFreelancerId(freelancerId).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByStatus(ContractStatus status) {
+        return contractRepository.findByStatus(status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByClientAndStatus(
+            Long clientId, ContractStatus status) {
+        return contractRepository.findByClientIdAndStatus(clientId, status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override @Transactional(readOnly = true)
+    public List<ContractDto.Response> getContractsByFreelancerAndStatus(
+            Long freelancerId, ContractStatus status) {
+        return contractRepository.findByFreelancerIdAndStatus(freelancerId, status).stream()
+                .map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public ContractDto.Response updateContractStatus(Long id,
+                                                     ContractDto.UpdateStatusRequest request) {
+        Contract contract = findOrThrow(id);
+        contract.setStatus(request.getStatus());
+        return toResponse(contractRepository.save(contract));
+    }
+
+    @Override
+    public void deleteContract(Long id) {
+        findOrThrow(id);
+        contractRepository.deleteById(id);
+    }
+
+    private Contract findOrThrow(Long id) {
+        return contractRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Contract not found: " + id));
+    }
+
+    private ContractDto.Response toResponse(Contract c) {
+        List<ContractExtensionDto.Response> extensions = c.getExtensions().stream()
+                .map(e -> ContractExtensionDto.Response.builder()
+                        .id(e.getId()).contractId(c.getId())
+                        .additionalDays(e.getAdditionalDays())
+                        .extensionType(e.getExtensionType())
+                        .requestingParty(e.getRequestingParty())
+                        .status(e.getStatus())
+                        .proposedAmount(e.getProposedAmount())
+                        .suggestedAmount(e.getSuggestedAmount())
+                        .requesterNote(e.getRequesterNote())
+                        .responderNote(e.getResponderNote())
+                        .riskAlerts(e.getRiskAlerts())
+                        .requestedAt(e.getRequestedAt())
+                        .resolvedAt(e.getResolvedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        List<ContractSignatureDto.Response> signatures = c.getSignatures().stream()
+                .map(s -> ContractSignatureDto.Response.builder()
+                        .id(s.getId()).contractId(c.getId())
+                        .signerId(s.getSignerId())
+                        .signerRole(s.getSignerRole())
+                        .signerEmail(s.getSignerEmail())
+                        .signerName(s.getSignerName())
+                        .status(s.getStatus())
+                        .signatureData(s.getSignatureData())
+                        .token(s.getToken())
+                        .ipAddress(s.getIpAddress())
+                        .signedAt(s.getSignedAt())
+                        .expiresAt(s.getExpiresAt())
+                        .createdAt(s.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ContractDto.Response.builder()
+                .id(c.getId())
+                .projectId(c.getProjectId())
+                .proposalId(c.getProposalId())
+                .freelancerId(c.getFreelancerId())
+                .clientId(c.getClientId())
+                .clientName(c.getClientName())
+                .freelancerName(c.getFreelancerName())
+                .amount(c.getAmount())
+                .platformFeePercentage(c.getPlatformFeePercentage())
+                .paymentStructure(c.getPaymentStructure())
+                .status(c.getStatus())
+                .startDate(c.getStartDate())
+                .endDate(c.getEndDate())
+                .description(c.getDescription())
+                .milestoneId(c.getMilestoneId())
+                .createdAt(c.getCreatedAt())
+                .updatedAt(c.getUpdatedAt())
+                .extensions(extensions)
+                .signatures(signatures)
+                .build();
+    }
+}

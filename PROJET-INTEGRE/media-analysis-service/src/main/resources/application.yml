@@ -1,0 +1,18 @@
+server:
+  port: 8106
+
+spring:
+  application:
+    name: media-analysis-service
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+app:
+  media:
+    # Taille max téléchargée depuis message-service (octets)
+    max-download-bytes: 25165824
+    # Pénalité si dépassement (score intrinsèque plafonné)
+    oversized-penalty: 0.35
