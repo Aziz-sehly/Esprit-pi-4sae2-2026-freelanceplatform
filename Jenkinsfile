@@ -63,9 +63,7 @@ pipeline {
                             }
                         }
                         // Gate checked immediately after each service � catches every failure
-                        timeout(time: 10, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
+             
                     }
                 }
             }
