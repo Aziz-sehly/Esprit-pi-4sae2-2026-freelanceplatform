@@ -63,7 +63,7 @@ pipeline {
                             }
                         }
                         // Gate checked immediately after each service � catches every failure
-             
+
                     }
                 }
             }

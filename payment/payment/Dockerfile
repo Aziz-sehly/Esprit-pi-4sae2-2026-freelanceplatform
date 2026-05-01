@@ -1,4 +1,4 @@
-﻿# ============================================
+# ============================================
 # STAGE 1: Build with Maven
 # ============================================
 FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
@@ -7,7 +7,6 @@ WORKDIR /app
 
 # Copy pom.xml first (for layer caching)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
 
 # Copy source and build JAR
 COPY src ./src
@@ -30,3 +29,4 @@ COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
