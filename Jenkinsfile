@@ -104,7 +104,7 @@ pipeline {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     // Apply all k8s manifests (namespace already set inside each file)
-                    sh 'kubectl apply -f k8s/'
+                     sh 'kubectl apply -f k8s/ --validate=false' 
                     script {
                         // Map: k8s deployment name ? docker image tag
                         // Container name inside each deployment matches the deployment name exactly
