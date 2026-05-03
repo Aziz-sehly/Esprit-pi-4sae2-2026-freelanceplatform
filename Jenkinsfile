@@ -104,7 +104,7 @@ pipeline {
             steps {
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     // Apply all k8s manifests (namespace already set inside each file)
-                     sh 'kubectl apply -f k8s/ --validate=false' 
+                     sh 'kubectl apply -f k8s/ --validate=false'
                     script {
                         // Map: k8s deployment name ? docker image tag
                         // Container name inside each deployment matches the deployment name exactly
@@ -128,7 +128,7 @@ pipeline {
                                   ${deployment}=${DOCKERHUB_USER}/pidev_microservices:${tag} \\
                                   -n ${K8S_NAMESPACE}
                                 kubectl rollout status deployment/${deployment} \\
-                                  -n ${K8S_NAMESPACE} --timeout=120s
+                                  -n ${K8S_NAMESPACE} --timeout=300s
                             """
                         }
                     }
