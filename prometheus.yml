@@ -1,0 +1,72 @@
+﻿global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  - job_name: 'gateway'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['gateway:8085']
+
+  - job_name: 'user-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['user-service:8084']
+
+  - job_name: 'contract-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['contract-service:8083']
+
+  - job_name: 'project-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['project-service:8091']
+
+  - job_name: 'proposal-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['proposal-service:8092']
+
+  - job_name: 'service-ms'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['service-ms:8086']
+
+  - job_name: 'dispute-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['dispute-service:8087']
+
+  - job_name: 'media-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['media-service:8088']
+
+  - job_name: 'message-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['message-service:8099']
+
+  - job_name: 'milestone'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['milestone:8081']
+
+  - job_name: 'payment'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['payment:8082']
+
+  - job_name: 'eureka'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['eureka:8761']
+
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysqld-exporter:9104']
