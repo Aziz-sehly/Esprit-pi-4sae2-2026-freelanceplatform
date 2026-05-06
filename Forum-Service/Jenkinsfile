@@ -19,12 +19,12 @@ pipeline {
             steps {
                 echo "Running unit tests..."
                 dir('Forum-Service') {
-                    sh 'mvn test -B'
+                    bat 'mvn test -B'
                 }
             }
             post {
                 always {
-                    junit 'Forum-Service/target/surefire-reports/*.xml'
+                    junit allowEmptyResults: true, testResults: 'Forum-Service/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -34,13 +34,7 @@ pipeline {
                 echo "Running SonarQube analysis..."
                 withSonarQubeEnv('SonarQube') {
                     dir('Forum-Service') {
-                        sh """
-                            mvn sonar:sonar \
-                                -Dsonar.projectKey=forum-service \
-                                -Dsonar.projectName=Forum-Service \
-                                -Dsonar.token=${SONAR_TOKEN} \
-                                -B
-                        """
+                        bat "mvn sonar:sonar -Dsonar.projectKey=forum-service -Dsonar.projectName=Forum-Service -Dsonar.token=%SONAR_TOKEN% -B"
                     }
                 }
             }
@@ -59,7 +53,7 @@ pipeline {
             steps {
                 echo "Packaging application..."
                 dir('Forum-Service') {
-                    sh 'mvn package -DskipTests -B'
+                    bat 'mvn package -DskipTests -B'
                 }
             }
         }
@@ -68,8 +62,8 @@ pipeline {
             steps {
                 echo "Building Docker image..."
                 dir('Forum-Service') {
-                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                    bat "docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% ."
+                    bat "docker tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest"
                 }
             }
         }
@@ -77,14 +71,9 @@ pipeline {
         stage('Docker Run') {
             steps {
                 echo "Starting container locally..."
-                sh "docker stop ${DOCKER_IMAGE} || true"
-                sh "docker rm   ${DOCKER_IMAGE} || true"
-                sh """
-                    docker run -d \
-                        --name ${DOCKER_IMAGE} \
-                        -p 8094:8094 \
-                        ${DOCKER_IMAGE}:latest
-                """
+                bat "docker stop %DOCKER_IMAGE% || exit 0"
+                bat "docker rm %DOCKER_IMAGE% || exit 0"
+                bat "docker run -d --name %DOCKER_IMAGE% -p 8094:8094 %DOCKER_IMAGE%:latest"
             }
         }
 
