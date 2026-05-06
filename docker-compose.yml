@@ -21,7 +21,7 @@ x-common-deploy: &common-deploy
         memory: 384m
 
 services:
-  # ── MySQL ──────────────────────────────────────────
+  # ── MySQL ─────────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -48,7 +48,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Eureka ─────────────────────────────────────────
+  # ── Eureka ────────────────────────────────────────────────────
   eureka:
     image: faresjebali/pidev_microservices:eureka-server
     container_name: eureka
@@ -63,12 +63,12 @@ services:
         limits:
           memory: 256m
 
-  # ── Gateway ────────────────────────────────────────
+  # ── Gateway ───────────────────────────────────────────────────
   gateway:
     image: faresjebali/pidev_microservices:gateway
     container_name: gateway
     ports:
-      - "8080:8080"
+      - "8085:8085"
     environment:
       <<: *common-env
     depends_on:
@@ -81,12 +81,12 @@ services:
         limits:
           memory: 256m
 
-  # ── Microservices ──────────────────────────────────
+  # ── Microservices ─────────────────────────────────────────────
   user-service:
     image: faresjebali/pidev_microservices:microservice-user
     container_name: user-service
     ports:
-      - "8081:8080"
+      - "8084:8084"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/user_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -99,7 +99,7 @@ services:
     image: faresjebali/pidev_microservices:microservice-contract
     container_name: contract-service
     ports:
-      - "8082:8080"
+      - "8083:8083"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/contract_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -112,7 +112,7 @@ services:
     image: faresjebali/pidev_microservices:microservice-project
     container_name: project-service
     ports:
-      - "8083:8080"
+      - "8091:8091"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/project_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -125,7 +125,7 @@ services:
     image: faresjebali/pidev_microservices:microservice-proposal
     container_name: proposal-service
     ports:
-      - "8084:8080"
+      - "8092:8092"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/proposal_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -138,7 +138,7 @@ services:
     image: faresjebali/pidev_microservices:microservice-service
     container_name: service-ms
     ports:
-      - "8085:8080"
+      - "8086:8086"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/service_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -151,11 +151,10 @@ services:
     image: faresjebali/pidev_microservices:dispute-service
     container_name: dispute-service
     ports:
-      - "8086:8080"
+      - "8087:8087"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dispute_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-      # Extra var the dispute service reads directly
       DISPUTE_DB_URL: jdbc:mysql://mysql:3306/dispute_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     depends_on: *common-depends
     networks:
@@ -166,10 +165,11 @@ services:
     image: faresjebali/pidev_microservices:media-analysis-service
     container_name: media-service
     ports:
-      - "8087:8080"
+      - "8088:8088"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/media_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      SERVER_PORT: 8088
     depends_on: *common-depends
     networks:
       - pidev-network
@@ -179,11 +179,10 @@ services:
     image: faresjebali/pidev_microservices:message-service
     container_name: message-service
     ports:
-      - "8088:8080"
+      - "8099:8099"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/message_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-      # Extra var the message service reads directly
       MESSAGE_DB_URL: jdbc:mysql://mysql:3306/message_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     depends_on: *common-depends
     networks:
@@ -194,7 +193,7 @@ services:
     image: faresjebali/pidev_microservices:milestone
     container_name: milestone
     ports:
-      - "8089:8080"
+      - "8081:8081"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/milestone_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
@@ -207,7 +206,7 @@ services:
     image: faresjebali/pidev_microservices:payment
     container_name: payment
     ports:
-      - "8091:8080"
+      - "8082:8082"
     environment:
       <<: *common-env
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/payment_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true

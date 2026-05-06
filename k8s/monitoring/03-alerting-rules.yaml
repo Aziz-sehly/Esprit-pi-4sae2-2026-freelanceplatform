@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pidev-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus
+spec:
+  groups:
+    - name: pidev.availability
+      rules:
+        - alert: PidevServiceDown
+          expr: up{namespace="pidev"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service {{ $labels.job }} is DOWN"
+            description: "Pod {{ $labels.pod }} has been unreachable for more than 1 minute."
+        - alert: PidevServicesUnderThreshold
+          expr: count(up{namespace="pidev"} == 1) < 8
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Only {{ $value }} pidev services are UP (expected 10)"
+    - name: pidev.errors
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            rate(http_server_requests_seconds_count{namespace="pidev",status=~"5.."}[5m]) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on {{ $labels.application }}"
+        - alert: PodRestartingTooOften
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="pidev"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} restarting frequently"

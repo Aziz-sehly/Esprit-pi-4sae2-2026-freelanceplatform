@@ -127,7 +127,7 @@ pipeline {
                                 kubectl set image deployment/${deployment} \\
                                   ${deployment}=${DOCKERHUB_USER}/pidev_microservices:${tag} \\
                                   -n ${K8S_NAMESPACE}
-                              
+
                             """
                         }
                     }
