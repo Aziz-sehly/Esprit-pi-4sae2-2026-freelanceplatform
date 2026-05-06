@@ -1,0 +1,97 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'
+        jdk 'JDK17'
+    }
+
+    environment {
+        SERVICE_NAME = 'Reviews-Service'
+        DOCKER_IMAGE = 'reviews-service'
+        DOCKER_TAG   = "${BUILD_NUMBER}"
+        SONAR_TOKEN  = credentials('sonar-token')
+    }
+
+    stages {
+
+        stage('Unit Tests') {
+            steps {
+                echo "Running unit tests..."
+                dir('Reviews-Service') {
+                    sh 'mvn test -B'
+                }
+            }
+            post {
+                always {
+                    junit 'Reviews-Service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo "Running SonarQube analysis..."
+                withSonarQubeEnv('SonarQube') {
+                    dir('Reviews-Service') {
+                        sh """
+                            mvn sonar:sonar \
+                                -Dsonar.projectKey=reviews-service \
+                                -Dsonar.projectName=Reviews-Service \
+                                -Dsonar.token=${SONAR_TOKEN} \
+                                -B
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo "Waiting for SonarQube Quality Gate..."
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build JAR') {
+            steps {
+                echo "Packaging application..."
+                dir('Reviews-Service') {
+                    sh 'mvn package -DskipTests -B'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo "Building Docker image..."
+                dir('Reviews-Service') {
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+
+        stage('Docker Run') {
+            steps {
+                echo "Starting container locally..."
+                sh "docker stop ${DOCKER_IMAGE} || true"
+                sh "docker rm   ${DOCKER_IMAGE} || true"
+                sh """
+                    docker run -d \
+                        --name ${DOCKER_IMAGE} \
+                        -p 8093:8093 \
+                        ${DOCKER_IMAGE}:latest
+                """
+            }
+        }
+
+    }
+
+    post {
+        success { echo "✅ ${SERVICE_NAME} pipeline succeeded!" }
+        failure { echo "❌ ${SERVICE_NAME} pipeline failed. Check logs above." }
+    }
+}
