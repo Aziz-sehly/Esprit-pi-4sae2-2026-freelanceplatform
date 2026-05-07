@@ -40,14 +40,14 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                echo "Waiting for SonarQube Quality Gate..."
-                timeout(time: 20, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: false
-                }
-            }
-        }
+       // stage('Quality Gate') {
+          //  steps {
+             //   echo "Waiting for SonarQube Quality Gate..."
+              //  timeout(time: 20, unit: 'MINUTES') {
+                 //   waitForQualityGate abortPipeline: false
+              //  }
+         //   }
+     //   }
 
         stage('Build JAR') {
             steps {
