@@ -1,4 +1,4 @@
-﻿apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway
@@ -17,7 +17,7 @@ spec:
         - name: gateway
           image: faresjebali/pidev_microservices:gateway
           ports:
-            - containerPort: 8080
+            - containerPort: 8085
           env:
             - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
               value: http://eureka:8761/eureka
@@ -31,7 +31,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8085
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 10
@@ -45,6 +45,6 @@ spec:
   selector:
     app: gateway
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8085
+      targetPort: 8085
   type: LoadBalancer

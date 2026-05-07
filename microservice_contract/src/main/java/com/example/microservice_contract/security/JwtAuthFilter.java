@@ -1,4 +1,4 @@
-package com.example.microservice_contract.security;
+﻿package com.example.microservice_contract.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -76,6 +76,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         System.out.println(">>> shouldNotFilter: " + path);
-        return false;
+        return path.startsWith("/actuator");
     }
 }

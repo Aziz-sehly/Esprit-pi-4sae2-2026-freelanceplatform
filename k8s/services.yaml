@@ -1,4 +1,4 @@
-﻿# ── user-service ──────────────────────────────────────
+# ── user-service ──────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,7 +18,7 @@ spec:
         - name: user-service
           image: faresjebali/pidev_microservices:microservice-user
           ports:
-            - containerPort: 8080
+            - containerPort: 8084
           envFrom:
             - configMapRef:
                 name: common-env
@@ -45,9 +45,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8084
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -58,8 +59,8 @@ spec:
   selector:
     app: user-service
   ports:
-    - port: 8081
-      targetPort: 8080
+    - port: 8084
+      targetPort: 8084
 ---
 # ── contract-service ──────────────────────────────────
 apiVersion: apps/v1
@@ -81,7 +82,7 @@ spec:
         - name: contract-service
           image: faresjebali/pidev_microservices:microservice-contract
           ports:
-            - containerPort: 8080
+            - containerPort: 8083
           envFrom:
             - configMapRef:
                 name: common-env
@@ -108,9 +109,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8083
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -121,8 +123,8 @@ spec:
   selector:
     app: contract-service
   ports:
-    - port: 8082
-      targetPort: 8080
+    - port: 8083
+      targetPort: 8083
 ---
 # ── project-service ───────────────────────────────────
 apiVersion: apps/v1
@@ -144,7 +146,7 @@ spec:
         - name: project-service
           image: faresjebali/pidev_microservices:microservice-project
           ports:
-            - containerPort: 8080
+            - containerPort: 8091
           envFrom:
             - configMapRef:
                 name: common-env
@@ -171,9 +173,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8091
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -184,8 +187,8 @@ spec:
   selector:
     app: project-service
   ports:
-    - port: 8083
-      targetPort: 8080
+    - port: 8091
+      targetPort: 8091
 ---
 # ── proposal-service ──────────────────────────────────
 apiVersion: apps/v1
@@ -207,7 +210,7 @@ spec:
         - name: proposal-service
           image: faresjebali/pidev_microservices:microservice-proposal
           ports:
-            - containerPort: 8080
+            - containerPort: 8092
           envFrom:
             - configMapRef:
                 name: common-env
@@ -234,9 +237,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8092
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -247,8 +251,8 @@ spec:
   selector:
     app: proposal-service
   ports:
-    - port: 8084
-      targetPort: 8080
+    - port: 8092
+      targetPort: 8092
 ---
 # ── service-ms ────────────────────────────────────────
 apiVersion: apps/v1
@@ -270,7 +274,7 @@ spec:
         - name: service-ms
           image: faresjebali/pidev_microservices:microservice-service
           ports:
-            - containerPort: 8080
+            - containerPort: 8086
           envFrom:
             - configMapRef:
                 name: common-env
@@ -297,9 +301,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8086
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -310,8 +315,8 @@ spec:
   selector:
     app: service-ms
   ports:
-    - port: 8085
-      targetPort: 8080
+    - port: 8086
+      targetPort: 8086
 ---
 # ── dispute-service ───────────────────────────────────
 apiVersion: apps/v1
@@ -333,7 +338,7 @@ spec:
         - name: dispute-service
           image: faresjebali/pidev_microservices:dispute-service
           ports:
-            - containerPort: 8080
+            - containerPort: 8087
           envFrom:
             - configMapRef:
                 name: common-env
@@ -362,9 +367,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8087
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -375,8 +381,8 @@ spec:
   selector:
     app: dispute-service
   ports:
-    - port: 8086
-      targetPort: 8080
+    - port: 8087
+      targetPort: 8087
 ---
 # ── media-service ─────────────────────────────────────
 apiVersion: apps/v1
@@ -398,7 +404,7 @@ spec:
         - name: media-service
           image: faresjebali/pidev_microservices:media-analysis-service
           ports:
-            - containerPort: 8080
+            - containerPort: 8088
           envFrom:
             - configMapRef:
                 name: common-env
@@ -425,9 +431,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8088
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -438,8 +445,8 @@ spec:
   selector:
     app: media-service
   ports:
-    - port: 8087
-      targetPort: 8080
+    - port: 8088
+      targetPort: 8088
 ---
 # ── message-service ───────────────────────────────────
 apiVersion: apps/v1
@@ -461,7 +468,7 @@ spec:
         - name: message-service
           image: faresjebali/pidev_microservices:message-service
           ports:
-            - containerPort: 8080
+            - containerPort: 8099
           envFrom:
             - configMapRef:
                 name: common-env
@@ -490,9 +497,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8099
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -503,8 +511,8 @@ spec:
   selector:
     app: message-service
   ports:
-    - port: 8088
-      targetPort: 8080
+    - port: 8099
+      targetPort: 8099
 ---
 # ── milestone ─────────────────────────────────────────
 apiVersion: apps/v1
@@ -526,7 +534,7 @@ spec:
         - name: milestone
           image: faresjebali/pidev_microservices:milestone
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
           envFrom:
             - configMapRef:
                 name: common-env
@@ -553,9 +561,10 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8081
             initialDelaySeconds: 40
             periodSeconds: 10
+            failureThreshold: 10
 ---
 apiVersion: v1
 kind: Service
@@ -566,8 +575,8 @@ spec:
   selector:
     app: milestone
   ports:
-    - port: 8089
-      targetPort: 8080
+    - port: 8081
+      targetPort: 8081
 ---
 # ── payment ───────────────────────────────────────────
 apiVersion: apps/v1
@@ -589,7 +598,7 @@ spec:
         - name: payment
           image: faresjebali/pidev_microservices:payment
           ports:
-            - containerPort: 8080
+            - containerPort: 8082
           envFrom:
             - configMapRef:
                 name: common-env
@@ -616,7 +625,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8080
+              port: 8082
             initialDelaySeconds: 90
             periodSeconds: 15
             failureThreshold: 10
@@ -630,5 +639,5 @@ spec:
   selector:
     app: payment
   ports:
-    - port: 8091
-      targetPort: 8080
+    - port: 8082
+      targetPort: 8082
