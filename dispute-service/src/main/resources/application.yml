@@ -77,3 +77,13 @@ app:
         prior-alpha: 2.0
         prior-beta: 2.0
         confidence-prior-samples: 5.0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+

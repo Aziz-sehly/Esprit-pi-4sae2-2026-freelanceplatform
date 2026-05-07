@@ -1,4 +1,4 @@
-﻿package com.example.microservice_contract.security;
+package com.example.microservice_contract.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;

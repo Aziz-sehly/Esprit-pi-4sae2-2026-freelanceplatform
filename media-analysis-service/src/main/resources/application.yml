@@ -16,3 +16,13 @@ app:
     max-download-bytes: 25165824
     # Pénalité si dépassement (score intrinsèque plafonné)
     oversized-penalty: 0.35
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
