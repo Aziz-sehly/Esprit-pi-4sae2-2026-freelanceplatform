@@ -17,6 +17,7 @@ spec:
       containers:
         - name: user-service
           image: faresjebali/pidev_microservices:microservice-user
+          imagePullPolicy: Always
           ports:
             - containerPort: 8084
           envFrom:
@@ -80,7 +81,8 @@ spec:
     spec:
       containers:
         - name: contract-service
-          image: faresjebali/pidev_microservices:microservice-contract
+          image: faresjebali/pidev_microservices:contract-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 8083
           envFrom:
@@ -145,6 +147,7 @@ spec:
       containers:
         - name: project-service
           image: faresjebali/pidev_microservices:microservice-project
+          imagePullPolicy: Always
           ports:
             - containerPort: 8091
           envFrom:
@@ -209,6 +212,7 @@ spec:
       containers:
         - name: proposal-service
           image: faresjebali/pidev_microservices:microservice-proposal
+          imagePullPolicy: Always
           ports:
             - containerPort: 8092
           envFrom:
@@ -273,6 +277,7 @@ spec:
       containers:
         - name: service-ms
           image: faresjebali/pidev_microservices:microservice-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 8086
           envFrom:
@@ -337,6 +342,7 @@ spec:
       containers:
         - name: dispute-service
           image: faresjebali/pidev_microservices:dispute-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 8087
           envFrom:
@@ -403,6 +409,7 @@ spec:
       containers:
         - name: media-service
           image: faresjebali/pidev_microservices:media-analysis-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 8088
           envFrom:
@@ -467,6 +474,7 @@ spec:
       containers:
         - name: message-service
           image: faresjebali/pidev_microservices:message-service
+          imagePullPolicy: Always
           ports:
             - containerPort: 8099
           envFrom:
@@ -533,6 +541,7 @@ spec:
       containers:
         - name: milestone
           image: faresjebali/pidev_microservices:milestone
+          imagePullPolicy: Always
           ports:
             - containerPort: 8081
           envFrom:
@@ -597,6 +606,7 @@ spec:
       containers:
         - name: payment
           image: faresjebali/pidev_microservices:payment
+          imagePullPolicy: Always
           ports:
             - containerPort: 8082
           envFrom:
@@ -624,7 +634,7 @@ spec:
               cpu: "500m"
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /payment/actuator/health
               port: 8082
             initialDelaySeconds: 90
             periodSeconds: 15
