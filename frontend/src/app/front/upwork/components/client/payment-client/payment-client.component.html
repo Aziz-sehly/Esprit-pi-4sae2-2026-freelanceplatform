@@ -1,0 +1,57 @@
+<div class="sheet-backdrop" *ngIf="open" (click)="close()"></div>
+
+<aside class="sheet" *ngIf="open">
+  <mat-card class="sheet-card">
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">Payment</p>
+        <h2>Pay this milestone</h2>
+      </div>
+      <button mat-icon-button type="button" (click)="close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-item">
+        <span>Milestone</span>
+        <strong>#{{ milestoneId }}</strong>
+      </div>
+      <div class="summary-item">
+        <span>Amount</span>
+        <strong>{{ amount | currency:'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="summary-item">
+        <span>Service fee</span>
+        <strong>{{ platformFee | currency:'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div class="summary-item">
+        <span>Freelancer receives</span>
+        <strong>{{ amount - platformFee | currency:'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+    </div>
+
+    <p class="context">
+      Complete the payment to fund this milestone. The freelancer will only be paid after you confirm the final release.
+    </p>
+
+    <div *ngIf="errorMsg" class="message error">{{ errorMsg }}</div>
+    <div *ngIf="helperMsg" class="message success">{{ helperMsg }}</div>
+
+    <form [formGroup]="form" class="sheet-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Payment method</mat-label>
+        <mat-select formControlName="method">
+          <mat-option *ngFor="let method of methods" [value]="method">{{ method === 'CARD' ? 'Card' : method }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+
+    <div class="sheet-actions">
+      <button mat-stroked-button type="button" (click)="close()" [disabled]="loading">Cancel</button>
+      <button mat-flat-button color="primary" type="button" (click)="confirmPay()" [disabled]="loading">
+        {{ loading ? 'Preparing payment...' : 'Pay milestone' }}
+      </button>
+    </div>
+  </mat-card>
+</aside>

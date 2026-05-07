@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-service
+  namespace: prolance
+  labels:
+    app: message-service
+    tier: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path:   "/actuator/prometheus"
+        prometheus.io/port:   "8099"
+    spec:
+      containers:
+        - name: message-service
+          image: prolance/message-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8099
+          envFrom:
+            - configMapRef:
+                name: message-service-config
+            - secretRef:
+                name: message-service-secret
+          resources:
+            requests: { cpu: "150m", memory: "384Mi" }
+            limits:   { cpu: "750m", memory: "768Mi" }
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8099 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8099 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-service
+  namespace: prolance
+  labels:
+    app: message-service
+spec:
+  type: ClusterIP
+  selector:
+    app: message-service
+  ports:
+    - name: http
+      port: 8099
+      targetPort: 8099

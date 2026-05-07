@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-analysis-service
+  namespace: prolance
+  labels:
+    app: media-analysis-service
+    tier: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: media-analysis-service
+  template:
+    metadata:
+      labels:
+        app: media-analysis-service
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path:   "/actuator/prometheus"
+        prometheus.io/port:   "8106"
+    spec:
+      containers:
+        - name: media-analysis-service
+          image: prolance/media-analysis-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8106
+          envFrom:
+            - configMapRef:
+                name: media-analysis-service-config
+          resources:
+            requests: { cpu: "150m", memory: "512Mi" }
+            limits:   { cpu: "1000m", memory: "1Gi" }
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8106 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8106 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-analysis-service
+  namespace: prolance
+  labels:
+    app: media-analysis-service
+spec:
+  type: ClusterIP
+  selector:
+    app: media-analysis-service
+  ports:
+    - name: http
+      port: 8106
+      targetPort: 8106

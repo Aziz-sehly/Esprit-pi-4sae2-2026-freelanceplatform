@@ -1,0 +1,139 @@
+<section class="history-shell">
+  <mat-card class="history-card">
+    <div class="history-head">
+      <div>
+        <p class="eyebrow">{{ eyebrow }}</p>
+        <h3>{{ title }}</h3>
+      </div>
+
+      <div class="history-actions">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Search payments</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onFilterChange()" placeholder="Milestone, amount, status..." />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="ALL">All statuses</mat-option>
+            <mat-option value="CHECKOUT_CREATED">Checkout ready</mat-option>
+            <mat-option value="FUNDED">Secured</mat-option>
+            <mat-option value="RELEASED">Paid out</mat-option>
+            <mat-option value="REFUND_PENDING">Refund requested</mat-option>
+            <mat-option value="REFUNDED">Refunded</mat-option>
+            <mat-option value="FAILED">Payment failed</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Sort</mat-label>
+          <mat-select [(ngModel)]="sortOption" (selectionChange)="onFilterChange()">
+            <mat-option value="latest">Newest first</mat-option>
+            <mat-option value="oldest">Oldest first</mat-option>
+            <mat-option value="amountDesc">Highest amount</mat-option>
+            <mat-option value="amountAsc">Lowest amount</mat-option>
+            <mat-option value="status">Status</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field *ngIf="showMilestoneFilter" appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Milestone ID</mat-label>
+          <input matInput type="number" [(ngModel)]="milestoneId" />
+        </mat-form-field>
+
+        <button class="history-refresh" mat-icon-button type="button" (click)="load()" aria-label="Refresh payments" title="Refresh payments">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 5a7 7 0 1 1-6.65 9.2h2.13A5 5 0 1 0 8.14 8.7L11 11H4V4l2.72 2.72A6.96 6.96 0 0 1 12 5Z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="history-stats">
+      <div>
+        <span>Payments</span>
+        <strong>{{ payments.length }}</strong>
+      </div>
+      <div>
+        <span>Funded volume</span>
+        <strong>{{ totalFunded | currency:'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+      <div>
+        <span>Released net</span>
+        <strong>{{ totalReleased | currency:'USD':'symbol':'1.2-2' }}</strong>
+      </div>
+    </div>
+
+    <div *ngIf="errorMsg" class="error-banner">{{ errorMsg }}</div>
+    <div *ngIf="blockActions" class="error-banner">
+      {{ blockReason }}
+    </div>
+
+    <div class="payment-list" *ngIf="filteredPayments.length; else emptyState">
+      <article class="payment-item" *ngFor="let payment of pagedPayments">
+        <div class="payment-top">
+          <div>
+            <h4>Milestone payment</h4>
+            <p>{{ payment.createdAt | date:'medium' }} · {{ payment.milestoneId ? ('Milestone #' + payment.milestoneId) : 'Contract payment' }}</p>
+          </div>
+          <mat-chip [color]="chipColor(payment.status)" selected>{{ statusLabel(payment.status) }}</mat-chip>
+        </div>
+
+        <div class="payment-grid">
+          <div>
+            <span>Gross</span>
+            <strong>{{ payment.amount | currency:'USD':'symbol':'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Fee</span>
+            <strong>{{ payment.platformFee | currency:'USD':'symbol':'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Net</span>
+            <strong>{{ payment.netAmount | currency:'USD':'symbol':'1.2-2' }}</strong>
+          </div>
+          <div>
+            <span>Payment channel</span>
+            <strong>{{ payment.provider === 'STRIPE' ? 'Online card payment' : payment.provider }}</strong>
+          </div>
+        </div>
+
+        <div class="payment-actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            *ngIf="!readonly && payment.status === 'FUNDED'"
+            [disabled]="blockActions"
+            (click)="release(payment)">
+            Release to freelancer
+          </button>
+          <button
+            mat-stroked-button
+            color="warn"
+            type="button"
+            *ngIf="!readonly && (payment.status === 'FUNDED' || payment.status === 'RELEASED')"
+            [disabled]="blockActions"
+            (click)="refund(payment)">
+            Request refund
+          </button>
+        </div>
+      </article>
+
+      <mat-paginator
+        [length]="filteredPayments.length"
+        [pageIndex]="pageIndex"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="pageSizeOptions"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </div>
+
+    <ng-template #emptyState>
+      <div class="empty-state">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <p>{{ loading ? 'Loading payment history...' : 'No payments yet for this contract.' }}</p>
+      </div>
+    </ng-template>
+  </mat-card>
+</section>

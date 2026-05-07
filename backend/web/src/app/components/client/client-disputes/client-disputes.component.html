@@ -1,0 +1,19 @@
+<div *ngIf="loading" style="padding: 2rem; display: grid; place-items: center;">
+  <mat-spinner diameter="40"></mat-spinner>
+</div>
+
+<div *ngIf="error && !loading" style="padding: 2rem;">
+  {{ error }}
+</div>
+
+<app-dispute-center
+  *ngIf="contract as currentContract"
+  [contract]="currentContract"
+  [actorId]="currentContract.clientId"
+  [actorName]="currentContract.clientName"
+  [actorRole]="'CLIENT'"
+  [accentClass]="'client'"
+  [canModerate]="true"
+  [backLink]="'/client/contracts/' + currentContract.id + '/workspace'"
+  backLabel="Back to client workspace">
+</app-dispute-center>

@@ -1,0 +1,284 @@
+# Minimal Prometheus + Grafana stack inside the cluster.
+# For richer setups, switch to kube-prometheus-stack (Helm) instead.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels: { cluster: prolance }
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ['alertmanager.monitoring.svc.cluster.local:9093']
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs: [{ role: pod }]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: application
+      - job_name: 'alertmanager'
+        static_configs:
+          - targets: ['alertmanager.monitoring.svc.cluster.local:9093']
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  prolance.alerts.yml: |
+    groups:
+      - name: prolance.availability
+        interval: 30s
+        rules:
+          - alert: ServiceDown
+            expr: up{application=~"message-service|dispute-service|media-analysis-service"} == 0
+            for: 1m
+            labels: { severity: critical, team: backend }
+            annotations:
+              summary: "Service {{ $labels.application }} is DOWN"
+              description: "Pod {{ $labels.instance }} of {{ $labels.application }} unreachable for >1m."
+      - name: prolance.http
+        interval: 30s
+        rules:
+          - alert: HighHttpErrorRate
+            expr: |
+              ( sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+                / clamp_min(sum by (application) (rate(http_server_requests_seconds_count[5m])), 0.001)
+              ) > 0.05
+            for: 5m
+            labels: { severity: critical, team: backend }
+            annotations:
+              summary: "{{ $labels.application }} 5xx > 5%"
+              description: ">5% of HTTP requests on {{ $labels.application }} are failing."
+          - alert: HighHttpLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum by (le, application) (rate(http_server_requests_seconds_bucket[5m]))
+              ) > 1
+            for: 10m
+            labels: { severity: warning, team: backend }
+            annotations:
+              summary: "{{ $labels.application }} p95 latency > 1s"
+              description: "p95 latency >1s for {{ $labels.application }} for 10 minutes."
+      - name: prolance.jvm
+        interval: 1m
+        rules:
+          - alert: JvmHeapPressure
+            expr: |
+              ( sum by (application, instance) (jvm_memory_used_bytes{area="heap"})
+                / sum by (application, instance) (jvm_memory_max_bytes{area="heap"}) ) > 0.85
+            for: 10m
+            labels: { severity: warning, team: backend }
+            annotations:
+              summary: "{{ $labels.application }} heap > 85%"
+              description: "Heap pressure on {{ $labels.application }}/{{ $labels.instance }}."
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: fallback
+      group_by: ['alertname','application']
+      group_wait: 30s
+      group_interval: 2m
+      repeat_interval: 3h
+      routes:
+        - matchers: [ severity="critical" ]
+          receiver: slack-critical
+          continue: true
+        - matchers: [ severity="warning" ]
+          receiver: slack-warning
+    inhibit_rules:
+      - source_matchers: [ alertname="ServiceDown" ]
+        target_matchers: [ severity=~"warning|critical" ]
+        equal: ['application']
+    receivers:
+      - name: fallback
+      - name: slack-critical
+        slack_configs:
+          - channel: '#alerts-critical'
+            send_resolved: true
+            api_url_file: /etc/alertmanager/secrets/slack_url
+            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            text: |-
+              *Service:* `{{ .CommonLabels.application | default .CommonLabels.job }}`
+              {{ range .Alerts -}}
+              • {{ .Annotations.summary }} — {{ .Annotations.description }}
+              {{ end -}}
+      - name: slack-warning
+        slack_configs:
+          - channel: '#alerts-warning'
+            send_resolved: true
+            api_url_file: /etc/alertmanager/secrets/slack_url
+            title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            text: |-
+              *Service:* `{{ .CommonLabels.application | default .CommonLabels.job }}`
+              {{ range .Alerts -}}
+              • {{ .Annotations.summary }} — {{ .Annotations.description }}
+              {{ end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-secrets
+  namespace: monitoring
+type: Opaque
+stringData:
+  # Replace with the real Slack incoming-webhook before applying.
+  slack_url: "https://hooks.slack.com/services/EMPTY"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: prometheus, namespace: monitoring }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: prometheus }
+rules:
+  - apiGroups: [""]
+    resources: ["nodes","nodes/metrics","services","endpoints","pods"]
+    verbs: ["get","list","watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: prometheus }
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - { kind: ServiceAccount, name: prometheus, namespace: monitoring }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: prometheus, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: prometheus } }
+  template:
+    metadata:
+      labels: { app: prometheus }
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.55.0
+          args:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--web.enable-lifecycle'
+          ports: [{ containerPort: 9090 }]
+          volumeMounts:
+            - { name: cfg,   mountPath: /etc/prometheus }
+            - { name: rules, mountPath: /etc/prometheus/rules }
+            - { name: data,  mountPath: /prometheus }
+      volumes:
+        - { name: cfg,   configMap: { name: prometheus-config } }
+        - { name: rules, configMap: { name: prometheus-rules  } }
+        - { name: data,  emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: prometheus, namespace: monitoring }
+spec:
+  selector: { app: prometheus }
+  ports: [{ port: 9090, targetPort: 9090 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: alertmanager, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: alertmanager } }
+  template:
+    metadata:
+      labels: { app: alertmanager }
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.27.0
+          args:
+            - '--config.file=/etc/alertmanager/alertmanager.yml'
+            - '--storage.path=/alertmanager'
+          ports: [{ containerPort: 9093 }]
+          volumeMounts:
+            - { name: cfg,     mountPath: /etc/alertmanager }
+            - { name: secrets, mountPath: /etc/alertmanager/secrets, readOnly: true }
+            - { name: data,    mountPath: /alertmanager }
+      volumes:
+        - { name: cfg,     configMap: { name: alertmanager-config } }
+        - { name: secrets, secret:    { secretName: alertmanager-secrets } }
+        - { name: data,    emptyDir:  {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: alertmanager, namespace: monitoring }
+spec:
+  type: NodePort
+  selector: { app: alertmanager }
+  ports:
+    - port: 9093
+      targetPort: 9093
+      nodePort: 30093
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: grafana, namespace: monitoring }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: grafana } }
+  template:
+    metadata:
+      labels: { app: grafana }
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.2.0
+          ports: [{ containerPort: 3000 }]
+          env:
+            - { name: GF_SECURITY_ADMIN_USER,     value: admin }
+            - { name: GF_SECURITY_ADMIN_PASSWORD, value: admin }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: grafana, namespace: monitoring }
+spec:
+  type: NodePort
+  selector: { app: grafana }
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30030

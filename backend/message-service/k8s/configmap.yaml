@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: message-service-config
+  namespace: prolance
+  labels:
+    app: message-service
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8099"
+  EUREKA_DEFAULT_ZONE: "http://eureka-server.prolance.svc.cluster.local:8761/eureka"
+  USER_SERVICE_BASE_URL: "http://microservice-user.prolance.svc.cluster.local:8084/api/users"
+  MESSAGE_DB_URL: "jdbc:mysql://mysql.prolance.svc.cluster.local:3306/prolance_message?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  MESSAGE_DB_USER: "root"

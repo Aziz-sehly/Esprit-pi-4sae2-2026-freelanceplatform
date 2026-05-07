@@ -1,0 +1,164 @@
+# =====================================================================
+#  Prolance · DevOps stack (Jenkins, SonarQube, Prometheus, Grafana)
+# ---------------------------------------------------------------------
+#  Boot it once on the build server / your laptop :
+#      docker compose -f devops/docker-compose.yml up -d
+#  Then visit :
+#      Jenkins      → http://localhost:8080   (admin password : see logs)
+#      SonarQube    → http://localhost:9000   (admin / admin → reset)
+#      Prometheus   → http://localhost:9090
+#      Grafana      → http://localhost:3000   (admin / admin)
+# =====================================================================
+services:
+
+  # ---------- Jenkins (CI/CD orchestrator) -------------------------
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: prolance-jenkins
+    user: root
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=true"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # mount the host docker socket so Jenkins can build/push Docker images
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- SonarQube (code quality / coverage) -------------------
+  sonardb:
+    image: postgres:16-alpine
+    container_name: prolance-sonardb
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+    volumes:
+      - sonar_db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks: [devops]
+
+  sonarqube:
+    image: sonarqube:community           # currently → SonarQube Server 25.x (Community Build)
+    container_name: prolance-sonarqube
+    depends_on: [sonardb]
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonardb:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_logs:/opt/sonarqube/logs
+      - sonar_extensions:/opt/sonarqube/extensions
+    ulimits:
+      nofile: { soft: 65536, hard: 65536 }
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- Prometheus (metrics) ----------------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    container_name: prolance-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prom_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    depends_on: [alertmanager]
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- Alertmanager (alert routing & dispatch) ---------------
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: prolance-alertmanager
+    ports:
+      - "9093:9093"
+    environment:
+      # Override at runtime :  SLACK_API_URL=https://hooks.slack.com/...  docker compose up -d
+      SLACK_API_URL: ${SLACK_API_URL:-https://hooks.slack.com/services/EMPTY}
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - am_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- Grafana (dashboards) ----------------------------------
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: prolance-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- node-exporter (host metrics for the Grafana panel) ----
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: prolance-node-exporter
+    pid: "host"
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    networks: [devops]
+
+  # ---------- cAdvisor (container metrics) --------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: prolance-cadvisor
+    ports:
+      - "8088:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: unless-stopped
+    networks: [devops]
+
+networks:
+  devops:
+    driver: bridge
+
+volumes:
+  jenkins_home:
+  sonar_db_data:
+  sonar_data:
+  sonar_logs:
+  sonar_extensions:
+  prom_data:
+  grafana_data:
+  am_data:

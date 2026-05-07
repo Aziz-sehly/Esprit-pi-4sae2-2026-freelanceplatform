@@ -1,0 +1,34 @@
+<div class="wrap">
+  <div class="header">
+    <h1>Proposals (admin)</h1>
+    <p>List of all proposals. Delete only.</p>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading...</div>
+
+  <div class="table" *ngIf="!loading && proposals.length > 0">
+    <div class="row header">
+      <div>Project</div>
+      <div>Budget</div>
+      <div>Status</div>
+      <div>Actions</div>
+    </div>
+    <div class="row" *ngFor="let p of proposals">
+      <div>
+        <a [routerLink]="['/back/admin-projects']" [queryParams]="{ projectId: p.projectId }">
+          {{ getProjectTitle(p.projectId) }}
+        </a>
+      </div>
+      <div>${{ p.proposedBudget }}</div>
+      <div>{{ p.status }}</div>
+      <div>
+        <button type="button" class="danger" (click)="delete(p.id)">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty" *ngIf="!loading && proposals.length === 0">
+    No proposals.
+  </div>
+</div>
+

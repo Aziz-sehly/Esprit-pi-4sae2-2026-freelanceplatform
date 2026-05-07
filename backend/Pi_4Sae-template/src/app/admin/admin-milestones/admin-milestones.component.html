@@ -1,0 +1,57 @@
+<div class="wrap">
+  <div class="header">
+    <h1>Milestones (admin)</h1>
+    <p>View milestones by contract (accepted proposal).</p>
+  </div>
+
+  <div class="contract-bar">
+    <div class="field">
+      <label>Contract (accepted proposal)</label>
+      <select [(ngModel)]="contractId" (ngModelChange)="load()">
+        <option [ngValue]="null">-- Select a contract --</option>
+        <option *ngFor="let c of contracts" [ngValue]="c.id">
+          {{ getContractLabel(c) }}
+        </option>
+      </select>
+      <div class="hint" *ngIf="!contractsLoading && contracts.length === 0">
+        No accepted proposals. Contracts are created when a client accepts a proposal.
+      </div>
+    </div>
+    <button (click)="load()" [disabled]="loading || !contractId">Load</button>
+  </div>
+
+  <div *ngIf="successMsg" class="alert success">{{ successMsg }}</div>
+  <div *ngIf="errorMsg" class="alert error">{{ errorMsg }}</div>
+
+  <div *ngIf="loading" class="loading">Loading milestones...</div>
+
+  <div class="table" *ngIf="!loading && contractId">
+    <div class="filter-row">
+      <select [(ngModel)]="statusFilter">
+        <option value="ALL">All statuses</option>
+        <option value="PENDING">PENDING</option>
+        <option value="SUBMITTED">SUBMITTED</option>
+        <option value="APPROVED">APPROVED</option>
+        <option value="PAID">PAID</option>
+      </select>
+    </div>
+    <div class="row header">
+      <div>#</div>
+      <div>Title</div>
+      <div>Amount</div>
+      <div>Due</div>
+      <div>Status</div>
+    </div>
+    <div class="row" *ngFor="let m of filteredMilestones">
+      <div>{{ m.id }}</div>
+      <div>
+        <strong>{{ m.title }}</strong>
+        <div class="muted">{{ m.deliverable }}</div>
+      </div>
+      <div>{{ m.amount | number:'1.2-2' }}</div>
+      <div>{{ m.dueDate || '-' }}</div>
+      <div><span [class]="badgeClass(m.status)">{{ m.status }}</span></div>
+    </div>
+    <div class="empty" *ngIf="filteredMilestones.length === 0">No milestones for this contract.</div>
+  </div>
+</div>

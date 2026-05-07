@@ -1,0 +1,65 @@
+# =====================================================================
+#  Alertmanager configuration
+# ---------------------------------------------------------------------
+#  - critical alerts → Slack #alerts-critical (+ optional email)
+#  - warning  alerts → Slack #alerts-warning
+#  - everything else → fallback receiver (just logs)
+#
+#  Set the env vars below (in docker-compose) to enable real channels :
+#      SLACK_API_URL              : incoming webhook URL
+#      SMTP_SMARTHOST / SMTP_FROM : if you also want emails
+# =====================================================================
+global:
+  resolve_timeout: 5m
+  # Set in docker-compose / k8s manifest. Keep an empty fallback so AM still boots.
+  slack_api_url: ${SLACK_API_URL:-https://hooks.slack.com/services/EMPTY}
+
+route:
+  receiver: fallback
+  group_by: ['alertname', 'application']
+  group_wait: 30s
+  group_interval: 2m
+  repeat_interval: 3h
+  routes:
+    - matchers: [ severity="critical" ]
+      receiver: slack-critical
+      continue: true
+    - matchers: [ severity="warning" ]
+      receiver: slack-warning
+
+# Avoid alert spam : if a service is DOWN, mute its latency / 5xx alerts.
+inhibit_rules:
+  - source_matchers: [ alertname="ServiceDown" ]
+    target_matchers: [ severity=~"warning|critical" ]
+    equal: ['application']
+
+receivers:
+
+  - name: fallback
+    # No notifier configured → AM just keeps the alert in its UI.
+
+  - name: slack-critical
+    slack_configs:
+      - channel: '#alerts-critical'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+        text: |-
+          *Severity:* `{{ .CommonLabels.severity }}`
+          *Service:*  `{{ .CommonLabels.application | default .CommonLabels.job | default "n/a" }}`
+          {{ range .Alerts -}}
+          • {{ .Annotations.summary }}
+            _{{ .Annotations.description }}_
+          {{ end -}}
+
+  - name: slack-warning
+    slack_configs:
+      - channel: '#alerts-warning'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: |-
+          *Service:* `{{ .CommonLabels.application | default .CommonLabels.job | default "n/a" }}`
+          {{ range .Alerts -}}
+          • {{ .Annotations.summary }} — {{ .Annotations.description }}
+          {{ end -}}
+
+# templates can be added later under /etc/alertmanager/templates/

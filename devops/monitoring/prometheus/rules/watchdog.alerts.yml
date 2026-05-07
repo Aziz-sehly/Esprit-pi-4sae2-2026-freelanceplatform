@@ -1,0 +1,18 @@
+# =====================================================================
+#  Watchdog / Heartbeat alert
+# ---------------------------------------------------------------------
+#  This alert is *always* firing (vector(1) is always 1).
+#  Purpose : prove that the Prom → Alertmanager → notifier pipeline works.
+#  Hide it from receivers in alertmanager.yml if you don't want the noise
+#  by adding a route that matches alertname="Watchdog" and a null receiver.
+# =====================================================================
+groups:
+  - name: prolance.watchdog
+    rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: info
+        annotations:
+          summary: "Alerting pipeline alive"
+          description: "If you stop seeing this alert for >5 min, Prometheus or Alertmanager is broken."

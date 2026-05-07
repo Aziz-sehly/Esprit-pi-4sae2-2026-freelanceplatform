@@ -1,0 +1,61 @@
+server:
+  port: 8099
+
+spring:
+  application:
+    name: message-service
+  servlet:
+    multipart:
+      max-file-size: 80MB
+      max-request-size: 80MB
+  datasource:
+    url: ${MESSAGE_DB_URL:jdbc:mysql://localhost:3306/prolance_message?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MESSAGE_DB_USER:root}
+    password: ${MESSAGE_DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_DEFAULT_ZONE:http://localhost:8761/eureka}
+
+# Spring Boot Actuator + Prometheus (scraped by Prometheus / Grafana dashboards)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+app:
+  jwt:
+    # Même valeur que microservice_user (jwt.secret) — clé Base64 pour HS256.
+    secret: ${APP_JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  upload-dir: ./uploads
+  user-service:
+    base-url: ${USER_SERVICE_BASE_URL:http://localhost:8084/api/users}
+  demo-user-ids: 1,2,3,4,5,6,7,8,9,10
+  censor:
+    enabled: true
+    replacement: "***"
+    banned-words:
+      - badword
+      - insult
+      - spam
+      - hate

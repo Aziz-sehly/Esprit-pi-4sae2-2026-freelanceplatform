@@ -1,0 +1,37 @@
+<div class="wrap">
+  <div class="header">
+    <h1>Freelancer Preferences (Candidatures)</h1>
+    <p>Liste des préférences freelancer (skills, types de projets, budget).</p>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.success]="alertType === 'success'" [class.error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <div *ngIf="loading" class="loading">Chargement...</div>
+
+  <div class="table" *ngIf="!loading && preferences.length > 0">
+    <div class="row header">
+      <div>Freelancer ID</div>
+      <div>Skills</div>
+      <div>Project Types</div>
+      <div>Budget</div>
+      <div>Delivery</div>
+      <div>Actions</div>
+    </div>
+    <div class="row" *ngFor="let p of preferences">
+      <div>{{ p.freelancerId }}</div>
+      <div class="cell-wrap">{{ formatSkills(p) }}</div>
+      <div class="cell-wrap">{{ formatTypes(p) }}</div>
+      <div>${{ p.minBudget ?? 0 }} - ${{ p.maxBudget ?? 0 }}</div>
+      <div>{{ p.avgDeliveryDays ?? 0 }} days</div>
+      <div>
+        <button type="button" class="danger" (click)="delete(p.freelancerId)">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty" *ngIf="!loading && preferences.length === 0">
+    Aucune préférence enregistrée.
+  </div>
+</div>

@@ -1,0 +1,32 @@
+# ---------- Java / Maven ----------
+target/
+*.class
+*.iml
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+*.log
+hs_err_pid*
+
+# ---------- Node / Angular ----------
+node_modules/
+.angular/
+dist/
+coverage/
+.tmp/
+.cache/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Docker volumes / runtime ----------
+**/uploads/
+
+# ---------- Local secrets ----------
+*.local
+.env
+.env.local

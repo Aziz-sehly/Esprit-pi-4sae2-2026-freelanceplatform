@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: media-analysis-service-config
+  namespace: prolance
+  labels:
+    app: media-analysis-service
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8106"
+  EUREKA_DEFAULT_ZONE: "http://eureka-server.prolance.svc.cluster.local:8761/eureka"

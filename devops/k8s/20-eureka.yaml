@@ -1,0 +1,36 @@
+# Service-discovery (Eureka) used by all microservices.
+# Replace the image with your own (./eureka_server) once it has been pushed
+# by Jenkins (`prolance/eureka-server:latest`).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: prolance
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: eureka-server } }
+  template:
+    metadata:
+      labels: { app: eureka-server }
+    spec:
+      containers:
+        - name: eureka-server
+          image: prolance/eureka-server:latest
+          ports: [{ containerPort: 8761 }]
+          env:
+            - { name: EUREKA_INSTANCE_HOSTNAME, value: "eureka-server" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8761 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+  namespace: prolance
+spec:
+  selector: { app: eureka-server }
+  ports:
+    - port: 8761
+      targetPort: 8761
