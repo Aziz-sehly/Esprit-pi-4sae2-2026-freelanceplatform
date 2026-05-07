@@ -1,7 +1,6 @@
 // =====================================================================
-//  Frontend (Angular daxa) · CI/CD pipeline
-//  Stages : Checkout · Install · Lint · Test+Coverage · Sonar
-//           Build · Docker push · K8s deploy
+//  message-service · CI/CD pipeline
+//  Stages : Checkout · Build · Test · Sonar · Docker · K8s deploy
 //  Triggered automatically by the Git → Jenkins webhook (githubPush).
 // =====================================================================
 pipeline {
@@ -19,20 +18,20 @@ pipeline {
   }
 
   tools {
-    nodejs 'Node-20'
+    maven 'Maven-3.9'
+    jdk   'JDK-17'
   }
 
   environment {
-    APP_NAME        = 'frontend-daxa'
-    IMAGE_NAME      = "${env.DOCKERHUB_NAMESPACE ?: 'prolance'}/frontend-daxa"
+    SERVICE_NAME    = 'message-service'
+    SERVICE_DIR     = 'Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/message-service'
+    IMAGE_NAME      = "${env.DOCKERHUB_NAMESPACE ?: 'prolance'}/message-service"
     IMAGE_TAG       = "${env.BUILD_NUMBER}"
-    SONAR_PROJECT   = 'prolance-frontend-daxa'
+    SONAR_PROJECT   = 'prolance-message-service'
     K8S_NAMESPACE   = 'prolance'
     KUBECONFIG_CRED = 'kubeconfig-prolance'
     DOCKERHUB_CRED  = 'dockerhub-creds'
     SONAR_TOKEN     = credentials('sonarqube-token')
-    CHROME_BIN      = '/usr/bin/google-chrome'
-    CI              = 'true'
   }
 
   stages {
@@ -40,43 +39,38 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
-        sh 'echo "Building $APP_NAME @ $(git rev-parse --short HEAD)"'
-        sh 'node -v && npm -v'
+        sh 'echo "Building $SERVICE_NAME @ $(git rev-parse --short HEAD)"'
       }
     }
 
-    stage('Install') {
+    stage('Build') {
       steps {
-        dir('frontend') { sh 'npm ci --no-audit --no-fund' }
+        dir("${SERVICE_DIR}") {
+          sh 'mvn -B -ntp -DskipTests clean package'
+        }
       }
     }
 
-    stage('Lint') {
+    stage('Test') {
       steps {
-        dir('frontend') { sh 'npm run lint' }
-      }
-    }
-
-    stage('Test + Coverage') {
-      steps {
-        dir('frontend') {
-          sh 'npx ng test --configuration=ci --watch=false --browsers=ChromeHeadlessCI --code-coverage'
+        dir("${SERVICE_DIR}") {
+          sh 'mvn -B -ntp test verify'
         }
       }
       post {
         always {
-          junit allowEmptyResults: true, testResults: 'frontend/TESTS-*.xml,frontend/test-results/**/*.xml'
-          archiveArtifacts artifacts: 'frontend/coverage/daxa/**', allowEmptyArchive: true
+          junit allowEmptyResults: true, testResults: "${SERVICE_DIR}/target/surefire-reports/*.xml"
+          archiveArtifacts artifacts: "${SERVICE_DIR}/target/site/jacoco/jacoco.xml", allowEmptyArchive: true
         }
       }
     }
 
     stage('SonarQube Analysis') {
       steps {
-        dir('frontend') {
+        dir("${SERVICE_DIR}") {
           withSonarQubeEnv('SonarQube') {
             sh '''
-              npx --yes sonarqube-scanner \
+              mvn -B -ntp sonar:sonar \
                 -Dsonar.projectKey=$SONAR_PROJECT \
                 -Dsonar.host.url=$SONAR_HOST_URL \
                 -Dsonar.login=$SONAR_TOKEN
@@ -94,15 +88,9 @@ pipeline {
       }
     }
 
-    stage('Build (production)') {
-      steps {
-        dir('frontend') { sh 'npm run build:prod' }
-      }
-    }
-
     stage('Docker · build & push') {
       steps {
-        dir('frontend') {
+        dir("${SERVICE_DIR}") {
           script {
             docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CRED}") {
               def img = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", '.')
@@ -119,10 +107,10 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
           sh '''
-            kubectl -n ${K8S_NAMESPACE} apply -f frontend/k8s/
-            kubectl -n ${K8S_NAMESPACE} set image deployment/frontend-daxa \
-              frontend-daxa=${IMAGE_NAME}:${IMAGE_TAG} --record
-            kubectl -n ${K8S_NAMESPACE} rollout status deployment/frontend-daxa --timeout=180s
+            kubectl -n ${K8S_NAMESPACE} apply -f ${SERVICE_DIR}/k8s/
+            kubectl -n ${K8S_NAMESPACE} set image deployment/message-service \
+              message-service=${IMAGE_NAME}:${IMAGE_TAG} --record
+            kubectl -n ${K8S_NAMESPACE} rollout status deployment/message-service --timeout=180s
           '''
         }
       }
@@ -130,8 +118,8 @@ pipeline {
   }
 
   post {
-    success { echo "✔ ${APP_NAME} pipeline OK · image ${IMAGE_NAME}:${IMAGE_TAG}" }
-    failure { echo "✖ ${APP_NAME} pipeline FAILED" }
+    success { echo "✔ ${SERVICE_NAME} pipeline OK · image ${IMAGE_NAME}:${IMAGE_TAG}" }
+    failure { echo "✖ ${SERVICE_NAME} pipeline FAILED" }
     always  { cleanWs() }
   }
 }

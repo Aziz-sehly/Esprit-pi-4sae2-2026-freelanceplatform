@@ -1,11 +1,7 @@
 # Prolance · Sprint 3 (DevOps) — branch `sadok-devops`
 
-Monorepo bundle delivered for the Sprint 3 evaluation
-(*Infrastructure CI/CD & K8s — 10 pts*) covering :
-
-* **Backend** (Spring Boot microservices, Java 17)
-* **Frontend** (Angular 19 — `daxa`)
-* **DevOps stack** (Jenkins · SonarQube · Prometheus · Grafana · Alertmanager)
+Full Sprint 3 deliverable — covers the *Infrastructure CI/CD & K8s — 10 pts*
+rubric and the *Excellence (alerting / qualité / optimisation)* bonus.
 
 ---
 
@@ -13,51 +9,49 @@ Monorepo bundle delivered for the Sprint 3 evaluation
 
 ```
 .
-├─ backend/                     ← all Spring Boot services
-│  ├─ message-service/          · Dockerfile · Jenkinsfile · k8s/ · sonar
-│  ├─ dispute-service/          · idem
-│  ├─ media-analysis-service/   · idem
-│  └─ … (api-gateway, eureka_server, microservice_user, …)
+├─ Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/
+│  ├─ message-service/         · Dockerfile · Jenkinsfile · k8s/ · sonar
+│  ├─ dispute-service/         · idem
+│  ├─ media-analysis-service/  · idem
+│  └─ … (api-gateway, eureka_server, microservice_user, etc.)
 │
-├─ frontend/                    ← Angular daxa app
+├─ Esprit-pi-4sae2-2026-freelanceplatform-feature-integrated-frontend/
 │  ├─ Dockerfile · nginx.conf · Jenkinsfile · sonar-project.properties
 │  ├─ karma.conf.js
-│  └─ k8s/                      · Deployment + Service + Ingress
+│  └─ k8s/                     · Deployment + Service + Ingress
 │
-└─ devops/                      ← shared infrastructure (THIS DELIVERABLE)
-   ├─ docker-compose.yml        · Jenkins · Sonar · Prom · Grafana · Alertmanager · cAdvisor
+└─ devops/                     ← shared infrastructure (THIS DELIVERABLE)
+   ├─ docker-compose.yml       · Jenkins · Sonar · Prom · Grafana · Alertmanager · cAdvisor
    ├─ monitoring/
    │  ├─ prometheus/{prometheus.yml,rules/}
    │  ├─ alertmanager/alertmanager.yml
    │  └─ grafana/{provisioning,dashboards}
-   ├─ k8s/                      · namespace · MySQL · Eureka · monitoring
+   ├─ k8s/                     · namespace · MySQL · Eureka · monitoring · Alertmanager
    ├─ kubeadm/bootstrap.sh
-   └─ README.md                 · full operational guide
+   └─ README.md                · full operational guide
 ```
 
 ## Mapping to the rubric
 
 | Critère | Pts | Where |
 |---|---|---|
-| Jenkins & Webhooks (Front & Back) | 3   | `backend/*/Jenkinsfile`, `frontend/Jenkinsfile` (`triggers { githubPush() }`) |
-| Docker (back + front)             | 1.5 | `backend/*/Dockerfile`, `frontend/Dockerfile` |
+| Jenkins & Webhooks (Front & Back) | 3   | `*/Jenkinsfile` (`triggers { githubPush() }`) |
+| Docker (back + front)             | 1.5 | `*/Dockerfile` (multi-stage builds) |
 | Orchestration KubeAdm             | 2.5 | `devops/kubeadm/bootstrap.sh`, every `*/k8s/*.yaml` |
 | Qualité & SonarQube               | 1.5 | JaCoCo + `sonar:sonar` stage in every Jenkinsfile |
 | Supervision Prom + Grafana        | 1.5 | `devops/monitoring/*` + Spring Actuator/Prometheus |
-| **Excellence** (alerting + qualité + optimisation) | 2 | `devops/monitoring/prometheus/rules/*.yml`, Quality Gate stage, multi-stage Docker, gzip, healthchecks, K8s probes |
+| **Excellence**                    | 2   | Alertmanager rules · Quality Gate · multi-stage Docker · gzip · healthchecks · K8s probes |
 
-See **`devops/README.md`** for the full operational walkthrough (compose
-boot, Jenkins setup, Sonar wiring, kubeadm bootstrap, Grafana dashboards,
-Alertmanager + Slack).
+See **`devops/README.md`** for the full operational walkthrough.
 
 ## Pipelines on this branch
 
 Each pipeline is a separate Multibranch job in Jenkins, all pointing at this
-repo / branch but with a different *Script Path* :
+repo / branch but with a different *Script Path*:
 
-| Job name                          | Script Path                                       |
-|-----------------------------------|---------------------------------------------------|
-| `prolance-message-service`        | `backend/message-service/Jenkinsfile`             |
-| `prolance-dispute-service`        | `backend/dispute-service/Jenkinsfile`             |
-| `prolance-media-analysis-service` | `backend/media-analysis-service/Jenkinsfile`      |
-| `prolance-frontend-daxa`          | `frontend/Jenkinsfile`                            |
+| Jenkins job name                  | Script Path                                                                                       |
+|-----------------------------------|---------------------------------------------------------------------------------------------------|
+| `prolance-message-service`        | `Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/message-service/Jenkinsfile`     |
+| `prolance-dispute-service`        | `Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/dispute-service/Jenkinsfile`     |
+| `prolance-media-analysis-service` | `Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/media-analysis-service/Jenkinsfile` |
+| `prolance-frontend-daxa`          | `Esprit-pi-4sae2-2026-freelanceplatform-feature-integrated-frontend/Jenkinsfile`                  |

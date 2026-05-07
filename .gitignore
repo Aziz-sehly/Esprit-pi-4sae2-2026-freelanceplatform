@@ -1,3 +1,8 @@
+# ---------- Stuff outside the deliverable scope ----------
+_repo-bundle/
+repo-staging/
+video-assets/
+
 # ---------- Java / Maven ----------
 target/
 *.class

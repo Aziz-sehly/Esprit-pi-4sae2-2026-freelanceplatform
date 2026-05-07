@@ -1,7 +1,5 @@
 // =====================================================================
-//  message-service · CI/CD pipeline
-//  Stages : Checkout · Build · Test · Sonar · Docker · K8s deploy
-//  Triggered automatically by the Git → Jenkins webhook (githubPush).
+//  dispute-service · CI/CD pipeline
 // =====================================================================
 pipeline {
   agent any
@@ -23,10 +21,11 @@ pipeline {
   }
 
   environment {
-    SERVICE_NAME    = 'message-service'
-    IMAGE_NAME      = "${env.DOCKERHUB_NAMESPACE ?: 'prolance'}/message-service"
+    SERVICE_NAME    = 'dispute-service'
+    SERVICE_DIR     = 'Esprit-pi-4sae2-2026-freelanceplatform-microservice_faresjebali/dispute-service'
+    IMAGE_NAME      = "${env.DOCKERHUB_NAMESPACE ?: 'prolance'}/dispute-service"
     IMAGE_TAG       = "${env.BUILD_NUMBER}"
-    SONAR_PROJECT   = 'prolance-message-service'
+    SONAR_PROJECT   = 'prolance-dispute-service'
     K8S_NAMESPACE   = 'prolance'
     KUBECONFIG_CRED = 'kubeconfig-prolance'
     DOCKERHUB_CRED  = 'dockerhub-creds'
@@ -44,7 +43,7 @@ pipeline {
 
     stage('Build') {
       steps {
-        dir('backend/message-service') {
+        dir("${SERVICE_DIR}") {
           sh 'mvn -B -ntp -DskipTests clean package'
         }
       }
@@ -52,21 +51,21 @@ pipeline {
 
     stage('Test') {
       steps {
-        dir('backend/message-service') {
+        dir("${SERVICE_DIR}") {
           sh 'mvn -B -ntp test verify'
         }
       }
       post {
         always {
-          junit allowEmptyResults: true, testResults: 'backend/message-service/target/surefire-reports/*.xml'
-          archiveArtifacts artifacts: 'backend/message-service/target/site/jacoco/jacoco.xml', allowEmptyArchive: true
+          junit allowEmptyResults: true, testResults: "${SERVICE_DIR}/target/surefire-reports/*.xml"
+          archiveArtifacts artifacts: "${SERVICE_DIR}/target/site/jacoco/jacoco.xml", allowEmptyArchive: true
         }
       }
     }
 
     stage('SonarQube Analysis') {
       steps {
-        dir('backend/message-service') {
+        dir("${SERVICE_DIR}") {
           withSonarQubeEnv('SonarQube') {
             sh '''
               mvn -B -ntp sonar:sonar \
@@ -89,7 +88,7 @@ pipeline {
 
     stage('Docker · build & push') {
       steps {
-        dir('backend/message-service') {
+        dir("${SERVICE_DIR}") {
           script {
             docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CRED}") {
               def img = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", '.')
@@ -106,10 +105,10 @@ pipeline {
       steps {
         withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
           sh '''
-            kubectl -n ${K8S_NAMESPACE} apply -f backend/message-service/k8s/
-            kubectl -n ${K8S_NAMESPACE} set image deployment/message-service \
-              message-service=${IMAGE_NAME}:${IMAGE_TAG} --record
-            kubectl -n ${K8S_NAMESPACE} rollout status deployment/message-service --timeout=180s
+            kubectl -n ${K8S_NAMESPACE} apply -f ${SERVICE_DIR}/k8s/
+            kubectl -n ${K8S_NAMESPACE} set image deployment/dispute-service \
+              dispute-service=${IMAGE_NAME}:${IMAGE_TAG} --record
+            kubectl -n ${K8S_NAMESPACE} rollout status deployment/dispute-service --timeout=180s
           '''
         }
       }
