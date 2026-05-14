@@ -1,0 +1,113 @@
+<!-- front-layout.component.html -->
+<div class="app-container">
+  <header class="main-header">
+    <div class="header-content">
+      <a routerLink="/front" class="logo">🚀 Prolance</a>
+      
+      <button class="mobile-menu-btn" (click)="toggleMenu()">
+        ☰
+      </button>
+
+      <nav class="main-nav" [class.active]="isMenuOpen">
+        <a routerLink="/front" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+          🏠 Home
+        </a>
+        <a routerLink="/front/projects" routerLinkActive="active">
+          📋 Browse Projects
+        </a>
+        <a routerLink="/front/about" routerLinkActive="active">
+          ℹ️ About
+        </a>
+      </nav>
+
+      <div class="user-section">
+        <!-- Not logged in -->
+        <ng-container *ngIf="!authService.isAuthenticated()">
+          <a routerLink="/front/login" class="btn btn-outline">🔑 Login</a>
+          <a routerLink="/front/register" class="btn btn-primary">✨ Sign Up</a>
+        </ng-container>
+
+        <!-- Logged in -->
+        <ng-container *ngIf="authService.isAuthenticated() && currentUser">
+          <a routerLink="/front/messages" routerLinkActive="active" class="nav-inline-link" title="Messages">
+            💬 Messages
+          </a>
+          <a routerLink="/front/disputes" routerLinkActive="active" class="nav-inline-link" title="Litiges">
+            ⚖️ Litiges
+          </a>
+          <div class="user-dropdown">
+            <button class="user-info" (click)="toggleMenu()">
+              
+              <span class="user-name">{{ currentUser.firstName }}</span>
+              <span class="dropdown-arrow">▼</span>
+            </button>
+            
+            <div class="dropdown-menu" [class.show]="isMenuOpen">
+              <div class="dropdown-header">
+                <strong>{{ currentUser.firstName }} {{ currentUser.lastName }}</strong>
+                <span class="user-role-badge" [class.client]="currentUser.role === 'CLIENT'"
+                      [class.freelancer]="currentUser.role === 'FREELANCER'">
+                  {{ currentUser.role === 'CLIENT' ? '👔 Client' : '💻 Freelancer' }}
+                </span>
+              </div>
+              <div class="dropdown-divider"></div>
+              
+              <a [routerLink]="getDashboardLink()" class="dropdown-item">
+                👤 My Profile
+              </a>
+              <a routerLink="/front/messages" class="dropdown-item">
+                💬 Messages
+              </a>
+              <a routerLink="/front/disputes" class="dropdown-item">
+                ⚖️ Litiges
+              </a>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item logout" (click)="logout()">
+                🚪 Logout
+              </button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="main-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Prolance</h3>
+        <p>Connect with top freelancers. Get your projects done faster and more efficiently.</p>
+        <div class="social-links">
+          <a href="#">Twitter</a>
+          <a href="#">LinkedIn</a>
+          <a href="#">GitHub</a>
+        </div>
+      </div>
+      <div class="footer-section">
+        <h4>For Freelancers</h4>
+        <a href="#">Find Work</a>
+        <a href="#">Browse Projects</a>
+        <a href="#">Success Stories</a>
+      </div>
+      <div class="footer-section">
+        <h4>For Clients</h4>
+        <a href="#">Post a Project</a>
+        <a href="#">Hire Talent</a>
+        <a href="#">Pricing</a>
+      </div>
+      <div class="footer-section">
+        <h4>Company</h4>
+        <a href="#">About Us</a>
+        <a href="#">Blog</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2024 Prolance. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

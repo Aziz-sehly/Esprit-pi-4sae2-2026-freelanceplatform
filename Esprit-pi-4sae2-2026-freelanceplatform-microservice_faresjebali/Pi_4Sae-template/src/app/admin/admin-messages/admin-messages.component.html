@@ -1,0 +1,199 @@
+<div class="wrap">
+  <div class="head">
+    <h1>Messages & Communication</h1>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <div class="tabs">
+    <button type="button" class="tab" [class.active]="activeTab === 'messages'" (click)="setTab('messages')">
+      Messages
+    </button>
+    <button type="button" class="tab" [class.active]="activeTab === 'analytics'" (click)="setTab('analytics')">
+      Analytics
+    </button>
+    <button type="button" class="tab" [class.active]="activeTab === 'blocked'" (click)="setTab('blocked')">
+      Blocked users
+    </button>
+    <button type="button" class="tab" [class.active]="activeTab === 'audit'" (click)="setTab('audit')">
+      Audit logs
+    </button>
+  </div>
+
+  <!-- Tab: Messages -->
+  <div *ngIf="activeTab === 'messages'" class="tab-content">
+    <div class="filters">
+      <div class="filter-group filter-search">
+        <label>Search</label>
+        <input type="text" [(ngModel)]="filterSearch" placeholder="Name, content..." (keydown.enter)="loadMessages()" />
+        <button type="button" class="btn-apply" (click)="loadMessages()">Apply</button>
+      </div>
+      <div class="filter-group filter-date">
+        <label>Date</label>
+        <div class="date-input-wrap">
+          <input type="date" [(ngModel)]="filterDate" (ngModelChange)="loadMessages()" />
+          <button *ngIf="filterDate" type="button" class="btn-clear-date" (click)="clearDate()" title="Clear date">×</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Status</label>
+        <select [(ngModel)]="filterStatus" (ngModelChange)="loadMessages()">
+          <option value="">All</option>
+          <option value="SENT">Sent</option>
+          <option value="READ">Read</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Sort</label>
+        <select [(ngModel)]="filterSortOrder" (ngModelChange)="loadMessages()">
+          <option value="recent">Most recent</option>
+          <option value="oldest">Oldest</option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="loading" class="loading">
+      <div class="spinner"></div>
+      Loading...
+    </div>
+
+    <div class="table" *ngIf="!loading">
+      <div class="row header">
+        <div>ID</div>
+        <div>From → To</div>
+        <div>Content</div>
+        <div>Features</div>
+        <div>Status</div>
+        <div>Date</div>
+        <div>Actions</div>
+      </div>
+      <div class="row" *ngFor="let m of messages">
+        <div>#{{ m.id }}</div>
+        <div class="users-cell">{{ getUserDisplayName(m.senderUserId) }} → {{ getUserDisplayName(m.receiverUserId) }}</div>
+        <div class="content">{{ m.content || '(attachment)' }}</div>
+        <div class="badges-cell">
+          <span *ngFor="let b of getMessageBadges(m)" class="badge" [title]="b">{{ b }}</span>
+          <span *ngIf="getMessageBadges(m).length === 0" class="muted">—</span>
+        </div>
+        <div><span class="status-badge" [class.read]="m.status === 'READ'">{{ m.status === 'READ' ? 'Read' : 'Sent' }}</span></div>
+        <div>{{ formatDate(m.sentAt) }}</div>
+        <div class="actions-cell">
+          <button type="button" class="btn-action btn-edit" (click)="startEdit(m)" title="Edit">✎</button>
+          <button type="button" class="btn-action btn-delete" (click)="deleteMessage(m)" title="Delete">×</button>
+        </div>
+      </div>
+      <div class="row empty" *ngIf="messages.length === 0">
+        <div>No messages</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Analytics -->
+  <div *ngIf="activeTab === 'analytics'" class="tab-content analytics-content">
+    <div class="analytics-cards">
+      <div class="card">
+        <span class="card-value">{{ analytics['totalMessages'] ?? 0 }}</span>
+        <span class="card-label">Total messages</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['ephemeralMessages'] ?? 0 }}</span>
+        <span class="card-label">Ephemeral</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['scheduledMessages'] ?? 0 }}</span>
+        <span class="card-label">Scheduled</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['replyMessages'] ?? 0 }}</span>
+        <span class="card-label">Replies</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['messagesWithAttachments'] ?? 0 }}</span>
+        <span class="card-label">With attachments</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['totalReactions'] ?? 0 }}</span>
+        <span class="card-label">Reactions</span>
+      </div>
+      <div class="card">
+        <span class="card-value">{{ analytics['totalBlocks'] ?? 0 }}</span>
+        <span class="card-label">Blocks</span>
+      </div>
+    </div>
+    <div class="analytics-charts">
+      <h3>Communication features overview</h3>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h4>Message metrics</h4>
+          <div id="admin-messages-bar-chart"></div>
+        </div>
+        <div class="chart-card">
+          <h4>Feature distribution</h4>
+          <div id="admin-messages-donut-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Blocked users -->
+  <div *ngIf="activeTab === 'blocked'" class="tab-content">
+    <div class="blocks-table">
+      <div class="row header">
+        <div>ID</div>
+        <div>Blocker</div>
+        <div>Blocked</div>
+        <div>Date</div>
+      </div>
+      <div class="row" *ngFor="let b of blocks">
+        <div>#{{ b.id }}</div>
+        <div>{{ getUserDisplayName(b.blockerUserId) }}</div>
+        <div>{{ getUserDisplayName(b.blockedUserId) }}</div>
+        <div>{{ formatDate(b.blockedAt) }}</div>
+      </div>
+      <div class="row empty" *ngIf="blocks.length === 0">
+        <div>No blocked users</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Audit logs -->
+  <div *ngIf="activeTab === 'audit'" class="tab-content">
+    <div class="audit-table">
+      <div class="row header">
+        <div>ID</div>
+        <div>Message</div>
+        <div>Action</div>
+        <div>User</div>
+        <div>Details</div>
+        <div>Date</div>
+      </div>
+      <div class="row" *ngFor="let a of audits">
+        <div>#{{ a.id }}</div>
+        <div>#{{ a.messageId }}</div>
+        <div><span class="action-badge">{{ a.action }}</span></div>
+        <div>{{ getUserDisplayName(a.userId) }}</div>
+        <div class="details-cell">{{ a.details || '—' }}</div>
+        <div>{{ formatDate(a.performedAt) }}</div>
+      </div>
+      <div class="row empty" *ngIf="audits.length === 0">
+        <div>No audit logs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div *ngIf="editingMessage" class="modal-overlay" (click)="cancelEdit()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>Edit message #{{ editingMessage.id }}</h3>
+      <textarea [(ngModel)]="editingContent" rows="4" class="edit-textarea"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
+        <button type="button" class="btn-save" (click)="saveEdit()" [disabled]="updating || !(editingContent || '').trim()">
+          {{ updating ? '...' : 'Save' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

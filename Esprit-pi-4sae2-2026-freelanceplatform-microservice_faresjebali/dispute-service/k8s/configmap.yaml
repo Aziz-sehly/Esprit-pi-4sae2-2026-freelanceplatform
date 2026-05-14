@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dispute-service-config
+  namespace: prolance
+  labels:
+    app: dispute-service
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8087"
+  EUREKA_DEFAULT_ZONE: "http://eureka-server.prolance.svc.cluster.local:8761/eureka"
+  DISPUTE_DB_URL: "jdbc:mysql://mysql.prolance.svc.cluster.local:3306/prolance_dispute?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  DISPUTE_DB_USER: "root"

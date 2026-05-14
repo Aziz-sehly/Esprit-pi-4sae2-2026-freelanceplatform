@@ -1,0 +1,82 @@
+<div class="wrap">
+  <div class="head">
+    <h1>User Management</h1>
+    <p>Create, edit, verify, activate, and delete users.</p>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <form class="create-form" (ngSubmit)="createUser()">
+    <input [(ngModel)]="draft.firstName" name="firstName" placeholder="First name" required />
+    <input [(ngModel)]="draft.lastName" name="lastName" placeholder="Last name" required />
+    <input [(ngModel)]="draft.email" name="email" type="email" placeholder="Email" required />
+    <input [(ngModel)]="draft.password" name="password" type="password" placeholder="Password (min 8)" required />
+    <select [(ngModel)]="draft.role" name="role">
+      <option value="CLIENT">CLIENT</option>
+      <option value="FREELANCER">FREELANCER</option>
+      <option value="ADMIN">ADMIN</option>
+    </select>
+    <input [(ngModel)]="draft.phoneNumber" name="phoneNumber" placeholder="Phone" />
+    <input [(ngModel)]="draft.skills" name="skills" placeholder="Skills (freelancer)" />
+    <input [(ngModel)]="draft.portfolioUrl" name="portfolioUrl" placeholder="Portfolio URL" />
+    <input [(ngModel)]="draft.companyName" name="companyName" placeholder="Company (client)" />
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="draft.isVerified" name="isVerified" />
+      Verified
+    </label>
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="draft.isActive" name="isActive" />
+      Active
+    </label>
+    <button type="submit" [disabled]="creating">{{ creating ? 'Creating...' : 'Create user' }}</button>
+  </form>
+
+  <div class="table" *ngIf="!loading; else loadingTpl">
+    <div class="row header">
+      <div>ID</div>
+      <div>Name</div>
+      <div>Email</div>
+      <div>Role</div>
+      <div>Verified</div>
+      <div>Active</div>
+      <div>Actions</div>
+    </div>
+
+    <div class="row" *ngFor="let u of users">
+      <div>{{ u.id }}</div>
+      <div class="name-col">
+        <input [(ngModel)]="u.firstName" placeholder="First" />
+        <input [(ngModel)]="u.lastName" placeholder="Last" />
+      </div>
+      <div><input [(ngModel)]="u.email" /></div>
+      <div>
+        <select [(ngModel)]="u.role">
+          <option value="CLIENT">CLIENT</option>
+          <option value="FREELANCER">FREELANCER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+      </div>
+      <div><input type="checkbox" [(ngModel)]="u.isVerified" /></div>
+      <div><input type="checkbox" [(ngModel)]="u.isActive" /></div>
+      <div class="actions">
+        <button type="button" (click)="saveUser(u)" [disabled]="savingUserId === u.id">
+          {{ savingUserId === u.id ? 'Saving...' : 'Save' }}
+        </button>
+        <button type="button" class="secondary" (click)="toggleVerified(u)" [disabled]="savingUserId === u.id">
+          {{ u.isVerified ? 'Unverify' : 'Verify' }}
+        </button>
+        <button type="button" class="danger" (click)="deleteUser(u)" [disabled]="savingUserId === u.id">Delete</button>
+      </div>
+    </div>
+
+    <div class="row empty" *ngIf="users.length === 0">
+      <div>No users found</div>
+    </div>
+  </div>
+
+  <ng-template #loadingTpl>
+    <div class="loading">Loading users...</div>
+  </ng-template>
+</div>

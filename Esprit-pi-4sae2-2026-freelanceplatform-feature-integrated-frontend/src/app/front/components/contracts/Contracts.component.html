@@ -1,0 +1,833 @@
+<!-- contracts.component.html -->
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-card mb-25 d-md-flex align-items-center justify-content-between">
+  <h5 class="mb-0">My Contracts</h5>
+  <ol class="breadcrumb list-unstyled mt-0 mb-0 pl-0">
+    <li class="breadcrumb-item position-relative">
+      <a routerLink="/front" class="d-inline-block position-relative">
+        <i class="ri-home-8-line"></i>
+        Dashboard
+      </a>
+    </li>
+    <li class="breadcrumb-item position-relative">Contracts</li>
+  </ol>
+</div>
+
+<!-- Main Layout -->
+<div class="row contracts-layout">
+
+  <!-- LEFT: Contract List -->
+  <div class="col-lg-4 col-md-12">
+    <div class="contracts-sidebar">
+
+      <!-- Search & Filter -->
+      <div class="sidebar-toolbar">
+        <input
+          class="search-box"
+          type="text"
+          placeholder="Search contracts..."
+          [(ngModel)]="searchQuery"
+          (input)="applyFilter()"
+        />
+        <select class="status-filter" [(ngModel)]="filterStatus" (change)="applyFilter()">
+          <option value="">All statuses</option>
+          <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading" class="loading-state">
+        <div class="spinner"></div>
+        <span>Loading contracts…</span>
+      </div>
+
+      <!-- Empty -->
+      <div *ngIf="!loading && filteredContracts.length === 0" class="empty-state">
+        <i class="ri-file-list-3-line empty-icon"></i>
+        <p>No contracts found.</p>
+      </div>
+
+      <!-- Contract List -->
+      <div class="contract-list" *ngIf="!loading && filteredContracts.length > 0">
+        <div
+          class="contract-item"
+          *ngFor="let c of filteredContracts"
+          [class.active]="selectedContract?.id === c.id"
+          (click)="selectContract(c)"
+        >
+          <div class="contract-item-header">
+            <span class="contract-id">#{{ c.id }}</span>
+            <span class="badge" [ngClass]="statusClass(c.status)">{{ c.status }}</span>
+          </div>
+          <div class="contract-item-meta">
+            <span class="meta-label">Project</span>
+            <span class="meta-value">#{{ c.projectId }}</span>
+          </div>
+          <div class="contract-item-meta">
+            <span class="meta-label">Amount</span>
+            <span class="meta-value amount">${{ c.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="contract-item-meta" *ngIf="c.endDate">
+            <span class="meta-label">Ends</span>
+            <span class="meta-value">{{ formatDate(c.endDate) }}</span>
+          </div>
+          <div class="contract-item-footer">
+            <span class="sig-count">
+              <i class="ri-quill-pen-line"></i>
+              {{ getSignedCount(c) }}/{{ c.signatures.length }} signed
+            </span>
+            <span class="ext-count" *ngIf="c.extensions.length > 0">
+              <i class="ri-time-line"></i>
+              {{ c.extensions.length }} ext.
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Detail Panel -->
+  <div class="col-lg-8 col-md-12">
+
+    <!-- No selection placeholder -->
+    <div *ngIf="!selectedContract" class="no-selection">
+      <i class="ri-file-paper-2-line placeholder-icon"></i>
+      <p>Select a contract to view details</p>
+    </div>
+
+    <!-- Detail view -->
+    <div class="detail-panel" *ngIf="selectedContract">
+
+      <!-- Tab Bar -->
+      <div class="tab-bar">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'details'"
+          (click)="activeTab = 'details'"
+        >
+          <i class="ri-file-list-line"></i> Details
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'pdf'"
+          (click)="openPdfTab()"
+        >
+          <i class="ri-file-pdf-line"></i> PDF
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'extensions'"
+          (click)="loadExtensions()"
+        >
+          <i class="ri-time-line"></i> Extensions
+          <span class="tab-badge" *ngIf="selectedContract.extensions.length > 0">
+            {{ selectedContract.extensions.length }}
+          </span>
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'milestones'"
+          (click)="activeTab = 'milestones'"
+        >
+          <i class="ri-flag-line"></i> Milestones
+          <span class="tab-badge" *ngIf="milestones.length > 0">{{ milestones.length }}</span>
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'disputes'"
+          (click)="activeTab = 'disputes'"
+        >
+          <i class="ri-error-warning-line"></i> Disputes
+          <span class="tab-badge" *ngIf="disputes.length > 0">{{ disputes.length }}</span>
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'payments'"
+          (click)="activeTab = 'payments'"
+        >
+          <i class="ri-money-dollar-circle-line"></i> Payments
+          <span class="tab-badge" *ngIf="payments.length > 0">{{ payments.length }}</span>
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'verify'"
+          (click)="activeTab = 'verify'"
+        >
+          <i class="ri-shield-check-line"></i> Verify
+        </button>
+      </div>
+
+      <!-- ── Details Tab ────────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'details'">
+
+        <div class="detail-header">
+          <div>
+            <h4 class="detail-title">Contract #{{ selectedContract.id }}</h4>
+            <span class="badge badge-lg" [ngClass]="statusClass(selectedContract.status)">
+              {{ selectedContract.status }}
+            </span>
+          </div>
+          <div class="detail-actions">
+            <button class="btn-action" (click)="downloadPdf()">
+              <i class="ri-download-line"></i> Download PDF
+            </button>
+            <button
+              class="btn-action btn-primary"
+              *ngIf="selectedContract.status === 'ACTIVE' || selectedContract.status === 'EXTENDED'"
+              (click)="openRequestExtensionModal()"
+            >
+              <i class="ri-time-line"></i> Request Extension
+            </button>
+          </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+          <div class="info-card">
+            <span class="info-label">Project ID</span>
+            <span class="info-value">#{{ selectedContract.projectId }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Proposal ID</span>
+            <span class="info-value">#{{ selectedContract.proposalId }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Amount</span>
+            <span class="info-value highlight">${{ selectedContract.amount | number:'1.2-2' }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Platform Fee</span>
+            <span class="info-value">{{ selectedContract.platformFeePercentage }}%</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Payment</span>
+            <span class="info-value">{{ selectedContract.paymentStructure ?? 'FIXED' }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Start Date</span>
+            <span class="info-value">{{ formatDate(selectedContract.startDate) }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">End Date</span>
+            <span class="info-value">{{ formatDate(selectedContract.endDate) }}</span>
+          </div>
+          <div class="info-card">
+            <span class="info-label">Created</span>
+            <span class="info-value">{{ formatDate(selectedContract.createdAt) }}</span>
+          </div>
+        </div>
+
+        <!-- Signatures -->
+        <div class="section-block">
+          <h6 class="block-title"><i class="ri-quill-pen-line"></i> Signatures</h6>
+          <div class="signatures-list">
+            <div class="sig-row" *ngFor="let sig of selectedContract.signatures">
+              <div class="sig-avatar">{{ sig.signerName[0] }}</div>
+              <div class="sig-info">
+                <span class="sig-name">{{ sig.signerName }}</span>
+                <span class="sig-role">{{ sig.signerRole }}</span>
+                <span class="sig-email muted">{{ sig.signerEmail }}</span>
+              </div>
+              <div class="sig-right">
+                <span class="badge" [ngClass]="statusClass(sig.status)">{{ sig.status }}</span>
+                <span class="sig-date muted" *ngIf="sig.signedAt">
+                  {{ sig.signedAt | date:'MMM d, HH:mm' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── PDF Tab ────────────────────────────────────────────────────── -->
+      <div class="tab-content pdf-tab" *ngIf="activeTab === 'pdf'">
+
+        <div class="file-browser-header">
+          <h5>Contract Documents</h5>
+          <button class="btn-action btn-primary" (click)="downloadPdf()">
+            <i class="ri-download-line"></i> Download
+          </button>
+        </div>
+
+        <!-- File cards -->
+        <div class="files-grid">
+          <!-- Main Contract PDF -->
+          <div class="file-card" (click)="openPdfTab()">
+            <div class="file-card-header">
+              <button class="menu-btn" (click)="$event.stopPropagation(); downloadPdf()">
+                <i class="ri-download-line"></i>
+              </button>
+            </div>
+            <div class="file-card-body">
+              <div class="file-icon pdf">
+                <i class="ri-file-pdf-line"></i>
+                <span class="file-type">PDF</span>
+              </div>
+              <div class="file-info">
+                <h6 class="file-name">Contract #{{ selectedContract.id }}.pdf</h6>
+                <span class="file-meta">Original Contract</span>
+                <span class="file-date">{{ formatDate(selectedContract.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Signed Version (if fully signed) -->
+          <div
+            class="file-card signed"
+            *ngIf="getSignedCount(selectedContract) === selectedContract.signatures.length && selectedContract.signatures.length > 0"
+            (click)="openPdfTab()"
+          >
+            <div class="file-card-header">
+              <button class="menu-btn" (click)="$event.stopPropagation(); downloadPdf()">
+                <i class="ri-download-line"></i>
+              </button>
+            </div>
+            <div class="file-card-body">
+              <div class="file-icon pdf signed">
+                <i class="ri-file-pdf-line"></i>
+                <span class="file-type">PDF</span>
+                <span class="signed-badge"><i class="ri-check-line"></i></span>
+              </div>
+              <div class="file-info">
+                <h6 class="file-name">Contract #{{ selectedContract.id }} - Signed.pdf</h6>
+                <span class="file-meta">Fully Signed</span>
+                <span class="file-date">{{ formatDate(selectedContract.updatedAt) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF Preview iframe -->
+        <div class="pdf-preview-section">
+
+          <!-- Loading state -->
+          <div *ngIf="pdfLoading" class="pdf-loading-state">
+            <div class="spinner"></div>
+            <span>Loading PDF preview…</span>
+          </div>
+
+          <!-- Error / not yet loaded -->
+          <div *ngIf="!pdfLoading && !pdfUrl" class="pdf-placeholder">
+            <i class="ri-file-pdf-line pdf-placeholder-icon"></i>
+            <p>Click a document above to preview it here.</p>
+          </div>
+
+          <!-- Iframe — only shown when pdfUrl is ready -->
+          <div *ngIf="!pdfLoading && pdfUrl" class="pdf-iframe-wrapper">
+            <div class="pdf-preview-header">
+              <span><i class="ri-eye-line"></i> Preview — Contract #{{ selectedContract.id }}.pdf</span>
+              <button class="btn-action btn-sm" (click)="downloadPdf()">
+                <i class="ri-download-line"></i> Download
+              </button>
+            </div>
+            <iframe
+              [src]="pdfUrl"
+              class="pdf-viewer"
+              title="Contract PDF"
+              type="application/pdf"
+            ></iframe>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Extensions Tab ─────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'extensions'">
+
+        <div class="ext-toolbar">
+          <h6 class="block-title"><i class="ri-time-line"></i> Extension Requests</h6>
+          <button
+            class="btn-action btn-primary"
+            *ngIf="selectedContract.status === 'ACTIVE' || selectedContract.status === 'EXTENDED'"
+            (click)="openRequestExtensionModal()"
+          >
+            + Request Extension
+          </button>
+        </div>
+
+        <div *ngIf="extensionsLoading" class="loading-state">
+          <div class="spinner"></div><span>Loading…</span>
+        </div>
+
+        <div *ngIf="!extensionsLoading && extensions.length === 0" class="empty-state small">
+          No extension requests yet.
+        </div>
+
+        <div class="extensions-list" *ngIf="!extensionsLoading && extensions.length > 0">
+          <div class="ext-card" *ngFor="let ext of extensions">
+            <div class="ext-card-header">
+              <div class="ext-meta">
+                <span class="ext-days">+{{ ext.additionalDays }} days</span>
+                <span class="ext-type muted">{{ getExtensionTypeLabel(ext.extensionType) }}</span>
+              </div>
+              <div class="ext-header-right">
+                <span class="ext-party-badge" [class.client]="ext.requestingParty === 'CLIENT'" [class.freelancer]="ext.requestingParty === 'FREELANCER'">
+                  <i class="ri-user-line"></i> {{ ext.requestingParty }}
+                </span>
+                <span class="badge" [ngClass]="statusClass(ext.status)">{{ ext.status }}</span>
+              </div>
+            </div>
+            <div class="ext-body">
+              <div class="ext-description muted" *ngIf="ext.extensionType">
+                {{ getExtensionTypeDescription(ext.extensionType) }}
+              </div>
+              <div class="ext-row" *ngIf="ext.requesterNote">
+                <span class="ext-label">Note</span>
+                <span class="ext-val">{{ ext.requesterNote }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.proposedAmount">
+                <span class="ext-label">Proposed amount</span>
+                <span class="ext-val amount">${{ ext.proposedAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.responderNote">
+                <span class="ext-label">Response note</span>
+                <span class="ext-val">{{ ext.responderNote }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.suggestedAmount">
+                <span class="ext-label">Suggested amount</span>
+                <span class="ext-val amount">${{ ext.suggestedAmount | number:'1.2-2' }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.riskAlerts">
+                <span class="ext-label">Risk / reason</span>
+                <span class="ext-val risk">{{ ext.riskAlerts }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.requestedAt">
+                <span class="ext-label">Requested</span>
+                <span class="ext-val muted">{{ ext.requestedAt | date:'MMM d, yyyy HH:mm' }}</span>
+              </div>
+              <div class="ext-row" *ngIf="ext.resolvedAt">
+                <span class="ext-label">Resolved</span>
+                <span class="ext-val muted">{{ ext.resolvedAt | date:'MMM d, yyyy HH:mm' }}</span>
+              </div>
+            </div>
+            <!-- Review button: only the OTHER party can review -->
+            <div class="ext-card-actions" *ngIf="canReviewExtension(ext)">
+              <button class="btn-action btn-primary" (click)="openReviewModal(ext)">
+                <i class="ri-check-double-line"></i> Review
+              </button>
+            </div>
+            <!-- Waiting indicator for own request -->
+            <div class="ext-card-waiting" *ngIf="ext.status === 'PENDING' && !canReviewExtension(ext)">
+              <i class="ri-time-line"></i> Waiting for the other party to review
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Milestones Tab ─────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'milestones'">
+        <div class="ext-toolbar">
+          <h6 class="block-title"><i class="ri-flag-line"></i> Milestones</h6>
+          <button class="btn-action btn-primary" (click)="openWorkspace()">
+            <i class="ri-external-link-line"></i> Open Workspace
+          </button>
+        </div>
+
+        <div *ngIf="milestonesLoading" class="loading-state">
+          <div class="spinner"></div><span>Loading milestones…</span>
+        </div>
+
+        <div *ngIf="!milestonesLoading && milestones.length === 0 && !milestonesError" class="empty-state small">
+          No milestones for this contract yet.
+        </div>
+        <div *ngIf="milestonesError" class="empty-state small" style="color:#c62828;">
+          <i class="ri-error-warning-line"></i> {{ milestonesError }}
+        </div>
+
+        <div *ngIf="!milestonesLoading && milestones.length > 0">
+          <div class="info-grid" style="margin-bottom: 16px;">
+            <div class="info-card">
+              <span class="info-label">Total</span>
+              <span class="info-value">{{ milestones.length }}</span>
+            </div>
+            <div class="info-card">
+              <span class="info-label">Value</span>
+              <span class="info-value highlight">${{ totalMilestoneValue | number:'1.2-2' }}</span>
+            </div>
+            <div class="info-card">
+              <span class="info-label">Paid</span>
+              <span class="info-value">{{ paidMilestones }}/{{ milestones.length }}</span>
+            </div>
+          </div>
+          <div class="extensions-list">
+            <div class="ext-card" *ngFor="let m of milestones">
+              <div class="ext-card-header">
+                <div class="ext-meta">
+                  <span class="ext-days">{{ m.title }}</span>
+                </div>
+                <span class="badge" [ngClass]="statusClass(m.status)">{{ milestoneStatusLabel(m.status) }}</span>
+              </div>
+              <div class="ext-body">
+                <div class="ext-row">
+                  <span class="ext-label">Amount</span>
+                  <span class="ext-val amount">${{ m.amount | number:'1.2-2' }}</span>
+                </div>
+                <div class="ext-row" *ngIf="m.deliverable">
+                  <span class="ext-label">Deliverable</span>
+                  <span class="ext-val">{{ m.deliverable }}</span>
+                </div>
+                <div class="ext-row" *ngIf="m.dueDate">
+                  <span class="ext-label">Due</span>
+                  <span class="ext-val muted">{{ formatDate(m.dueDate) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Disputes Tab ──────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'disputes'">
+        <div class="ext-toolbar">
+          <h6 class="block-title"><i class="ri-error-warning-line"></i> Disputes</h6>
+          <button class="btn-action btn-primary" (click)="goToDisputes()">
+            <i class="ri-add-line"></i> Manage Disputes
+          </button>
+        </div>
+
+        <div *ngIf="disputesLoading" class="loading-state">
+          <div class="spinner"></div><span>Loading disputes…</span>
+        </div>
+
+        <div *ngIf="!disputesLoading && disputes.length === 0 && !disputesError" class="empty-state small">
+          No disputes for this contract.
+        </div>
+        <div *ngIf="disputesError" class="empty-state small" style="color:#c62828;">
+          <i class="ri-error-warning-line"></i> {{ disputesError }}
+        </div>
+
+        <div class="extensions-list" *ngIf="!disputesLoading && disputes.length > 0">
+          <div class="ext-card" *ngFor="let d of disputes">
+            <div class="ext-card-header">
+              <div class="ext-meta">
+                <span class="ext-days">{{ d.disputeType }}</span>
+              </div>
+              <span class="badge" [ngClass]="statusClass(d.status)">{{ d.status }}</span>
+            </div>
+            <div class="ext-body">
+              <div class="ext-row">
+                <span class="ext-label">Reason</span>
+                <span class="ext-val">{{ d.reason }}</span>
+              </div>
+              <div class="ext-row" *ngIf="d.createdAt">
+                <span class="ext-label">Created</span>
+                <span class="ext-val muted">{{ formatDate(d.createdAt) }}</span>
+              </div>
+              <div class="ext-row" *ngIf="d.resolutionNote">
+                <span class="ext-label">Resolution</span>
+                <span class="ext-val">{{ d.resolutionNote }}</span>
+              </div>
+            </div>
+            <div class="ext-card-actions">
+              <a class="btn-action" [routerLink]="['/front/disputes', d.id]">
+                <i class="ri-eye-line"></i> Details
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Payments Tab ────────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'payments'">
+        <div class="ext-toolbar">
+          <h6 class="block-title"><i class="ri-money-dollar-circle-line"></i> Payment History</h6>
+          <button class="btn-action btn-primary" (click)="openWorkspace()">
+            <i class="ri-external-link-line"></i> Open Workspace
+          </button>
+        </div>
+
+        <div *ngIf="paymentsLoading" class="loading-state">
+          <div class="spinner"></div><span>Loading payments…</span>
+        </div>
+
+        <div *ngIf="!paymentsLoading && payments.length === 0 && !paymentsError" class="empty-state small">
+          No payments for this contract yet. Fund milestones from the workspace.
+        </div>
+        <div *ngIf="paymentsError" class="empty-state small" style="color:#c62828;">
+          <i class="ri-error-warning-line"></i> {{ paymentsError }}
+        </div>
+
+        <div *ngIf="!paymentsLoading && payments.length > 0">
+          <div class="info-grid" style="margin-bottom: 16px;">
+            <div class="info-card">
+              <span class="info-label">Total Payments</span>
+              <span class="info-value">{{ payments.length }}</span>
+            </div>
+            <div class="info-card">
+              <span class="info-label">Total Value</span>
+              <span class="info-value highlight">${{ totalPaymentsValue | number:'1.2-2' }}</span>
+            </div>
+            <div class="info-card">
+              <span class="info-label">Released</span>
+              <span class="info-value">{{ completedPayments }}/{{ payments.length }}</span>
+            </div>
+          </div>
+          <div class="extensions-list">
+            <div class="ext-card" *ngFor="let p of payments">
+              <div class="ext-card-header">
+                <div class="ext-meta">
+                  <span class="ext-days">Payment #{{ p.id }}</span>
+                  <span class="ext-type muted" *ngIf="p.milestoneId">Milestone #{{ p.milestoneId }}</span>
+                </div>
+                <span class="badge" [ngClass]="statusClass(p.status)">{{ paymentStatusLabel(p.status) }}</span>
+              </div>
+              <div class="ext-body">
+                <div class="ext-row">
+                  <span class="ext-label">Amount</span>
+                  <span class="ext-val amount">${{ p.amount | number:'1.2-2' }}</span>
+                </div>
+                <div class="ext-row" *ngIf="p.createdAt">
+                  <span class="ext-label">Created</span>
+                  <span class="ext-val muted">{{ formatDate(p.createdAt) }}</span>
+                </div>
+                <div class="ext-row" *ngIf="p.releasedAt">
+                  <span class="ext-label">Released</span>
+                  <span class="ext-val muted">{{ formatDate(p.releasedAt) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Verify Tab ──────────────────────────────────────────────────── -->
+      <div class="tab-content" *ngIf="activeTab === 'verify'">
+        <div class="verify-block">
+          <p class="verify-hint">
+            Enter the verification code printed on the PDF to confirm this contract's authenticity.
+          </p>
+          <div class="verify-form">
+            <input
+              class="verify-input"
+              type="text"
+              placeholder="e.g. A1B2C3D4E5F6"
+              [(ngModel)]="verifyCode"
+              maxlength="20"
+            />
+            <button class="btn-action btn-primary" (click)="verify()" [disabled]="verifyLoading || !verifyCode.trim()">
+              {{ verifyLoading ? 'Checking…' : 'Verify' }}
+            </button>
+          </div>
+          <div
+            *ngIf="verifyResult"
+            class="verify-result"
+            [class.result-valid]="verifyResult.valid"
+            [class.result-invalid]="!verifyResult.valid"
+          >
+            {{ verifyResult.message }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Request Extension ═════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showExtensionModal" (click)="showExtensionModal = false">
+  <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h5>Request Extension</h5>
+      <button class="modal-close" (click)="showExtensionModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Step 1: Choose Type -->
+      <div class="form-section">
+        <div class="form-section-title">
+          <i class="ri-list-check"></i> Extension Type
+        </div>
+        <div class="ext-type-grid">
+          <div
+            class="ext-type-card"
+            *ngFor="let type of availableExtensionTypes"
+            [class.selected]="extForm.extensionType === type.value"
+            (click)="extForm.extensionType = type.value; onExtensionTypeChange()"
+          >
+            <div class="ext-type-card-header">
+              <span class="ext-type-card-label">{{ type.label }}</span>
+              <i class="ri-check-circle-fill check-icon" *ngIf="extForm.extensionType === type.value"></i>
+            </div>
+            <p class="ext-type-card-desc">{{ type.description }}</p>
+          </div>
+        </div>
+        <!-- Show a notice if no type selected yet -->
+        <p class="type-hint muted" *ngIf="!extForm.extensionType">
+          <i class="ri-information-line"></i>
+          Select the reason that best describes your situation. Only types applicable to your role are shown.
+        </p>
+      </div>
+
+      <!-- Step 2: Details (only shown once a type is selected) -->
+      <ng-container *ngIf="extForm.extensionType">
+
+        <div class="form-divider"></div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <i class="ri-calendar-line"></i> Duration
+          </div>
+
+          <label class="form-field">
+            <span>Additional Days *</span>
+            <input type="number" min="1" max="365" [(ngModel)]="extForm.additionalDays" />
+            <span class="field-hint">How many additional days are you requesting?</span>
+          </label>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="form-section">
+          <div class="form-section-title">
+            <i class="ri-file-text-line"></i> Details
+          </div>
+
+          <!-- General note — always visible -->
+          <label class="form-field">
+            <span>{{ extForm.extensionType === 'CLIENT_DELAY' ? 'Describe the Delay' :
+                      extForm.extensionType === 'FREELANCER_DELAY' ? 'Explain the Delay' :
+                      extForm.extensionType === 'SCOPE_CHANGE' ? 'Describe the New Scope' :
+                      extForm.extensionType === 'COMPLEXITY_UNDERESTIMATED' ? 'Describe the Complexity' :
+                      extForm.extensionType === 'FORCE_MAJEURE' ? 'Describe the Event' :
+                      'Note' }}</span>
+            <textarea rows="3" [(ngModel)]="extForm.requesterNote" [placeholder]="
+              extForm.extensionType === 'CLIENT_DELAY' ? 'e.g. Feedback was delayed by 2 weeks due to internal review process…' :
+              extForm.extensionType === 'FREELANCER_DELAY' ? 'e.g. Illness prevented work for 5 days during the sprint…' :
+              extForm.extensionType === 'SCOPE_CHANGE' ? 'e.g. Client requested an additional module not in the original spec…' :
+              extForm.extensionType === 'COMPLEXITY_UNDERESTIMATED' ? 'e.g. The API integration required custom OAuth not accounted for…' :
+              extForm.extensionType === 'FORCE_MAJEURE' ? 'e.g. Natural disaster / power outage affected the region…' :
+              'Additional notes…'
+            "></textarea>
+          </label>
+
+          <!-- SCOPE_CHANGE: proposed amount is relevant -->
+          <label class="form-field" *ngIf="showProposedAmount">
+            <span>Proposed Additional Amount <span class="optional">(optional)</span></span>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">$</span>
+              <input type="number" min="0" step="0.01" [(ngModel)]="extForm.proposedAmount" placeholder="0.00" class="with-prefix" />
+            </div>
+            <span class="field-hint">
+              {{ extForm.extensionType === 'SCOPE_CHANGE'
+                  ? 'Enter any additional budget needed for the new scope.'
+                  : 'Proposed budget adjustment for the extended period.' }}
+            </span>
+          </label>
+
+          <!-- FORCE_MAJEURE / COMPLEXITY: impact note reminder -->
+          <div class="info-banner" *ngIf="showImpactNote">
+            <i class="ri-alert-line"></i>
+            <span>
+              {{ extForm.extensionType === 'FORCE_MAJEURE'
+                  ? 'Please provide evidence or documentation of the event if available. Both parties will need to agree.'
+                  : 'Provide specifics about what was underestimated so the other party can make an informed decision.' }}
+            </span>
+          </div>
+        </div>
+
+      </ng-container>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-action" (click)="showExtensionModal = false">Cancel</button>
+      <button
+        class="btn-action btn-primary"
+        (click)="submitExtension()"
+        [disabled]="extSaving || !extForm.additionalDays || !extForm.extensionType"
+      >
+        {{ extSaving ? 'Submitting…' : 'Submit Request' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Review Extension ══════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showReviewModal" (click)="showReviewModal = false">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h5>Review Extension Request</h5>
+      <button class="modal-close" (click)="showReviewModal = false">✕</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedExtension">
+
+      <!-- Summary card -->
+      <div class="review-summary">
+        <div class="review-summary-row">
+          <span class="review-summary-label">Type</span>
+          <span class="review-summary-val">{{ getExtensionTypeLabel(selectedExtension.extensionType) }}</span>
+        </div>
+        <div class="review-summary-row">
+          <span class="review-summary-label">Duration</span>
+          <span class="review-summary-val highlight">+{{ selectedExtension.additionalDays }} days</span>
+        </div>
+        <div class="review-summary-row" *ngIf="selectedExtension.proposedAmount">
+          <span class="review-summary-label">Proposed amount</span>
+          <span class="review-summary-val highlight">${{ selectedExtension.proposedAmount | number:'1.2-2' }}</span>
+        </div>
+        <div class="review-summary-row" *ngIf="selectedExtension.requesterNote">
+          <span class="review-summary-label">Requester note</span>
+          <span class="review-summary-val muted">{{ selectedExtension.requesterNote }}</span>
+        </div>
+      </div>
+
+      <!-- Decision -->
+      <label class="form-field">
+        <span>Decision *</span>
+        <div class="decision-toggle">
+          <button
+            class="decision-btn approve"
+            [class.active]="reviewForm.status === 'APPROVED'"
+            (click)="reviewForm.status = 'APPROVED'"
+          >
+            <i class="ri-check-circle-line"></i> Approve
+          </button>
+          <button
+            class="decision-btn reject"
+            [class.active]="reviewForm.status === 'REJECTED'"
+            (click)="reviewForm.status = 'REJECTED'"
+          >
+            <i class="ri-close-circle-line"></i> Reject
+          </button>
+        </div>
+      </label>
+
+      <label class="form-field">
+        <span>Response Note <span class="optional">(optional)</span></span>
+        <textarea rows="3" [(ngModel)]="reviewForm.responderNote" placeholder="Add a message for the requester…"></textarea>
+      </label>
+
+      <!-- APPROVED: suggest an amount adjustment -->
+      <label class="form-field" *ngIf="reviewForm.status === 'APPROVED'">
+        <span>Suggested Amount Adjustment <span class="optional">(optional)</span></span>
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">$</span>
+          <input type="number" min="0" step="0.01" [(ngModel)]="reviewForm.suggestedAmount" placeholder="0.00" class="with-prefix" />
+        </div>
+        <span class="field-hint">Counter-propose a budget if the original amount needs adjustment.</span>
+      </label>
+
+      <!-- REJECTED: risk alerts / reason -->
+      <label class="form-field" *ngIf="reviewForm.status === 'REJECTED'">
+        <span>Rejection Reason / Risk Alert</span>
+        <input type="text" [(ngModel)]="reviewForm.riskAlerts" placeholder="e.g. Request does not meet contract terms…" />
+      </label>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-action" (click)="showReviewModal = false">Cancel</button>
+      <button
+        class="btn-action"
+        [class.btn-primary]="reviewForm.status === 'APPROVED'"
+        [class.btn-danger]="reviewForm.status === 'REJECTED'"
+        (click)="submitReview()"
+        [disabled]="reviewSaving"
+      >
+        {{ reviewSaving ? 'Saving…' : (reviewForm.status === 'APPROVED' ? '✔ Approve' : '✕ Reject') }}
+      </button>
+    </div>
+  </div>
+</div>

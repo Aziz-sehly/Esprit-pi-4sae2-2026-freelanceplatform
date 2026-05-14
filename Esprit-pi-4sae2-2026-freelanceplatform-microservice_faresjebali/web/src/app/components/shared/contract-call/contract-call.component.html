@@ -1,0 +1,56 @@
+<section class="call-launcher" [class.client]="accentClass === 'client'" [class.freelancer]="accentClass === 'freelancer'">
+  <button class="call-pill" type="button" (click)="openCall()">
+    <span class="call-pill__avatar">{{ receiverName.charAt(0) }}</span>
+    <div class="call-pill__copy">
+      <strong>Video call</strong>
+      <small>Meet with {{ receiverName }}</small>
+    </div>
+    <svg class="call-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1.2l4.35-2.5A1 1 0 0 1 22 6.57v10.86a1 1 0 0 1-1.65.87L16 15.8V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+    </svg>
+  </button>
+
+  <div class="call-overlay" *ngIf="open">
+    <mat-card class="call-panel">
+      <header class="call-head">
+        <div>
+          <p class="eyebrow">Live contract call</p>
+          <h2>{{ receiverName }}</h2>
+          <p class="call-copy">Room: academic-contract-{{ contractId }}. Jitsi handles camera, mic, and screen share inside the meeting.</p>
+        </div>
+
+        <div class="call-head__actions">
+          <button class="call-head__close" mat-icon-button type="button" (click)="closeCall()" aria-label="Close call">
+            <svg class="call-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3l6.3 6.29 6.29-6.3z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="call-banner" *ngIf="error">{{ error }}</div>
+
+      <div class="call-stage" [class.is-loading]="initializing">
+        <div class="call-confirm" *ngIf="confirmStart">
+          <div class="call-confirm__icon" aria-hidden="true">
+            <svg class="call-icon" viewBox="0 0 24 24" focusable="false">
+              <path d="M4 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1.2l4.35-2.5A1 1 0 0 1 22 6.57v10.86a1 1 0 0 1-1.65.87L16 15.8V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+            </svg>
+          </div>
+          <h3>Start video call?</h3>
+          <p>This will open the live meeting room for you and {{ receiverName }}.</p>
+          <div class="call-confirm__actions">
+            <button mat-stroked-button type="button" (click)="closeCall()">Cancel</button>
+            <button mat-flat-button color="primary" type="button" (click)="confirmCallStart()">Start call</button>
+          </div>
+        </div>
+
+        <div class="call-loading" *ngIf="initializing">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Preparing the meeting room...</p>
+        </div>
+        <div class="meeting-host" #meetingHost [class.is-hidden]="confirmStart"></div>
+      </div>
+    </mat-card>
+  </div>
+</section>

@@ -1,0 +1,114 @@
+<section class="contracts-shell">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Client contracts</p>
+      <h1>Manage your contracts</h1>
+      <p class="hero-copy">
+        Create agreements, review active engagements, and keep each project organized in one place.
+      </p>
+    </div>
+  </div>
+
+  <div *ngIf="banner" class="banner" [class.error]="bannerTone === 'error'">{{ banner }}</div>
+
+  <div class="contracts-grid">
+    <mat-card class="composer-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">New contract</p>
+          <h2>Create via proposals</h2>
+        </div>
+      </div>
+      <p style="padding: 0 1.5rem 1.5rem;">
+        Contracts are now created automatically when a freelancer proposal is accepted.
+        Go to your <a routerLink="/front/proposals">project proposals</a> to start the process.
+      </p>
+    </mat-card>
+
+    <div class="list-column">
+      <mat-card class="summary-card">
+        <div>
+          <span>Total contracts</span>
+          <strong>{{ contracts.length }}</strong>
+        </div>
+        <div>
+          <span>Active</span>
+          <strong>{{ activeCount }}</strong>
+        </div>
+        <div>
+          <span>Awaiting freelancer</span>
+          <strong>{{ pendingCount }}</strong>
+        </div>
+      </mat-card>
+
+      <div class="contract-list">
+        <mat-card class="contract-card" *ngFor="let contract of contracts">
+          <div class="contract-top">
+            <div>
+              <h3>{{ contract.title }}</h3>
+              <p>{{ contract.scope }}</p>
+            </div>
+            <mat-chip [color]="chipColor(contract.status)" selected>{{ statusLabel(contract.status) }}</mat-chip>
+          </div>
+
+          <div class="meta-grid">
+            <div>
+              <span>Freelancer</span>
+              <strong>{{ contract.freelancerName }}</strong>
+            </div>
+            <div>
+              <span>Budget</span>
+              <strong>{{ contract.totalBudget | currency:'USD':'symbol':'1.2-2' }}</strong>
+            </div>
+            <div>
+              <span>Start</span>
+              <strong>{{ contract.startDate || 'TBD' }}</strong>
+            </div>
+            <div>
+              <span>End</span>
+              <strong>{{ contract.endDate || 'TBD' }}</strong>
+            </div>
+          </div>
+
+          <div class="milestones-preview" *ngIf="milestonesFor(contract.id).length > 0">
+            <h4>Jalons ({{ milestonesFor(contract.id).length }})</h4>
+            <ul>
+              <li *ngFor="let m of milestonesFor(contract.id)">
+                <span class="mt-title">{{ m.title }}</span>
+                <span class="mt-status">{{ m.status }}</span>
+                <span class="mt-amt">{{ m.amount | currency:'USD':'symbol':'1.0-0' }}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="actions">
+            <a
+              mat-flat-button
+              color="primary"
+              *ngIf="contract.status === 'ACTIVE'"
+              [routerLink]="['/front/client/contracts', contract.id, 'workspace']">
+              Open workspace
+            </a>
+            <button mat-stroked-button type="button" (click)="inspectResources(contract)">Resources</button>
+            <button
+              mat-stroked-button
+              color="warn"
+              type="button"
+              *ngIf="contract.status !== 'ACTIVE'"
+              (click)="cancel(contract)">
+              Cancel
+            </button>
+          </div>
+
+          <app-resources-panel
+            *ngIf="selectedContractId === contract.id"
+            [entityType]="'CONTRACT'"
+            [entityId]="contract.id"
+            title="Contract resources"
+            subtitle="Attach briefs, references, GitHub, Figma, Drive, or signed docs.">
+          </app-resources-panel>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</section>

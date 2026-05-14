@@ -1,0 +1,10 @@
+{
+  "/microservice-user": {
+    "target": "http://localhost:8085",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  },
+  "/project": {"target": "http://localhost:8765", "secure": false, "changeOrigin": true, "logLevel": "debug"},
+  "/proposal": {"target": "http://localhost:8765", "secure": false, "changeOrigin": true, "logLevel": "debug"}
+}

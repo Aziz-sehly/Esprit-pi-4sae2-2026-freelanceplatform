@@ -1,0 +1,78 @@
+<div class="main-class">
+    <div class="header">
+        <h2>Freelancer • My Milestones</h2>
+
+        <div class="contract-bar">
+            <div class="field">
+                <label>Contract (accepted proposal)</label>
+                <select [(ngModel)]="contractId" (ngModelChange)="load()">
+                    <option [ngValue]="null">-- Select a contract --</option>
+                    <option *ngFor="let c of contracts" [ngValue]="c.id">
+                        {{ getContractLabel(c) }}
+                    </option>
+                </select>
+                <div class="hint" *ngIf="!contractsLoading && contracts.length === 0">
+                    No accepted proposals yet. Your proposals must be accepted by the client first.
+                    Check <a routerLink="/front/my-proposals">My Proposals</a>.
+                </div>
+            </div>
+
+            <button (click)="load()" [disabled]="loading || !contractId">Load</button>
+
+            <select [(ngModel)]="statusFilter" class="filter">
+                <option value="ALL">All</option>
+                <option value="PENDING">PENDING</option>
+                <option value="SUBMITTED">SUBMITTED</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="PAID">PAID</option>
+            </select>
+        </div>
+    </div>
+
+    <div *ngIf="successMsg" class="alert success">{{ successMsg }}</div>
+    <div *ngIf="errorMsg" class="alert error">{{ errorMsg }}</div>
+
+    <div *ngIf="loading" class="muted">Loading...</div>
+
+    <div class="card" *ngIf="!loading">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Amount</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th>Submitted At</th>
+                    <th style="width: 160px;">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr *ngFor="let m of filteredMilestones">
+                    <td>{{ m.id }}</td>
+                    <td class="title">
+                        <div class="t1">{{ m.title }}</div>
+                        <div class="t2">{{ m.deliverable }}</div>
+                    </td>
+                    <td>{{ m.amount | number:'1.2-2' }}</td>
+                    <td>{{ m.dueDate || '-' }}</td>
+                    <td><span [class]="badgeClass(m.status)">{{ m.status }}</span></td>
+                    <td>{{ m.submittedAt ? (m.submittedAt | date:'medium') : '-' }}</td>
+                    <td>
+                        <button
+                            (click)="submit(m)"
+                            [disabled]="loading || m.status !== 'PENDING'"
+                        >
+                            Submit
+                        </button>
+                    </td>
+                </tr>
+
+                <tr *ngIf="filteredMilestones.length === 0">
+                    <td colspan="7" class="muted center">No milestones.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

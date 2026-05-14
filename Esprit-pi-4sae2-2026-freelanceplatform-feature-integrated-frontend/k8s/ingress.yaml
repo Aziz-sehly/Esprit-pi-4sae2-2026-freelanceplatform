@@ -1,0 +1,47 @@
+# Public entrypoint of the platform on the KubeAdm cluster.
+# Requires an Ingress controller (e.g. ingress-nginx) installed on the cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prolance-ingress
+  namespace: prolance
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "80m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prolance.local
+      http:
+        paths:
+          # API gateway exposure
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8765
+          - path: /microservice-user
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8765
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8765
+          # Default — Angular frontend (SPA)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-daxa
+                port:
+                  number: 80

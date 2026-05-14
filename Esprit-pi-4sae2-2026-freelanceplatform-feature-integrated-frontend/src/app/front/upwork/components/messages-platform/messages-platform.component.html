@@ -1,0 +1,329 @@
+<div class="messenger-wrap">
+  <div class="messenger-header">
+    <h1>Messages</h1>
+  </div>
+
+  <div *ngIf="alertMessage" class="alert" [class.alert-success]="alertType === 'success'" [class.alert-error]="alertType === 'error'">
+    {{ alertMessage }}
+  </div>
+
+  <div *ngIf="!currentUserId" class="login-prompt">
+    <p>Log in to access your messages.</p>
+  </div>
+
+  <div *ngIf="currentUserId" class="messenger-layout">
+    <!-- Liste des utilisateurs et conversations -->
+    <aside class="conversations-panel">
+      <div class="panel-header">
+        <h2>Users</h2>
+      </div>
+
+      <div class="search-box">
+        <input
+          type="text"
+          [(ngModel)]="userSearch"
+          placeholder="Search for a user..."
+        />
+      </div>
+
+      <div *ngIf="loading" class="loading">
+        <div class="spinner"></div>
+        Loading...
+      </div>
+
+      <ul *ngIf="!loading" class="user-list">
+        <li
+          *ngFor="let user of filteredUsers"
+          class="user-item"
+          [class.active]="selectedConversation?.otherUserId === user.id && selectedConversation?.contractId === 0"
+          (click)="selectUser(user)"
+        >
+          <span class="user-avatar" [class.user-online]="userStatusMap[user.id] === 'online'">👤</span>
+          <span class="user-name">{{ getUserDisplayName(user) }}</span>
+        </li>
+        <li *ngIf="filteredUsers.length === 0" class="empty">No users</li>
+      </ul>
+
+      <div *ngIf="!loading && blockedUsers.length > 0" class="conv-section blocked-section">
+        <h3>Blocked users</h3>
+        <ul class="blocked-list">
+          <li *ngFor="let b of blockedUsers" class="blocked-item">
+            <span class="blocked-name">{{ b.displayName }}</span>
+            <button type="button" class="btn-unblock" (click)="unblockUser(b.id)" title="Unblock">Unblock</button>
+          </li>
+        </ul>
+      </div>
+
+      <div *ngIf="!loading && conversations.length > 0" class="conv-section">
+        <h3>Recent conversations</h3>
+        <ul class="conversation-list">
+          <li
+            *ngFor="let conv of conversations"
+            class="conv-item"
+            [class.active]="selectedConversation?.contractId === conv.contractId && selectedConversation?.otherUserId === conv.otherUserId"
+            (click)="selectConversation(conv)"
+          >
+            <div class="conv-preview">
+              <span class="conv-user">{{ getConvUserDisplayName(conv) }}</span>
+            </div>
+            <div *ngIf="conv.lastMessage" class="conv-last">
+              {{ (conv.lastMessage.content || '(attachment)') | slice:0:35 }}{{ ((conv.lastMessage.content || '').length) > 35 ? '...' : '' }}
+            </div>
+            <span *ngIf="conv.unreadCount > 0" class="unread-badge">{{ conv.unreadCount }}</span>
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Zone de chat -->
+    <main class="chat-panel">
+      <div *ngIf="!selectedConversation" class="chat-placeholder">
+        <p>Click on a user to start a conversation.</p>
+      </div>
+
+      <div *ngIf="selectedConversation" class="chat-area">
+        <div class="chat-tags" *ngIf="conversationTags.length > 0 || newTagName">
+          <span *ngFor="let t of conversationTags" class="tag-chip" [style.background]="t.color || '#e0f2fe'" (click)="removeTag(t.id)">{{ t.tagName }} ×</span>
+          <input type="text" [(ngModel)]="newTagName" placeholder="Add tag..." (keydown.enter)="addTag()" class="tag-input" />
+          <button type="button" class="btn-add-tag" (click)="addTag()">Add</button>
+        </div>
+        <div class="chat-header">
+          <div class="chat-title">
+            <span>{{ getSelectedUserDisplayName() }}</span>
+            <span class="presence-badge" [class.online]="getOtherUserStatus() === 'online'" [class.offline]="getOtherUserStatus() !== 'online'" [title]="getOtherUserStatus() === 'online' ? 'Online' : 'Offline'">
+              {{ getOtherUserStatus() === 'online' ? '●' : '○' }}
+            </span>
+          </div>
+          <button type="button" class="btn-block" (click)="blockUser()" title="Block user">Block</button>
+          <button type="button" class="btn-delete-conv" (click)="deleteConversation()" title="Delete conversation">
+            Delete all
+          </button>
+        </div>
+
+        <aside class="milestones-context" *ngIf="partnerMilestones.length > 0">
+          <h4>Contrats & jalons (avec cette personne)</h4>
+          <div *ngFor="let block of partnerMilestones" class="milestone-block">
+            <div class="contract-label">{{ block.contract.title || 'Contract' }} <span class="cid">#{{ block.contract.id }}</span></div>
+            <ul>
+              <li *ngFor="let m of block.milestones">
+                <strong>{{ m.title }}</strong>
+                <span class="ms-status">{{ m.status }}</span>
+                <span class="ms-amt" *ngIf="m.amount != null">{{ m.amount | currency:'USD':'symbol':'1.0-0' }}</span>
+              </li>
+            </ul>
+          </div>
+        </aside>
+
+        <div class="chat-search" *ngIf="messages.length > 0">
+          <input type="text" [(ngModel)]="searchInMessages" placeholder="Search in messages..." />
+        </div>
+
+        <div *ngIf="typingUserId" class="typing-indicator">typing...</div>
+
+        <div class="messages-area">
+          <div
+            *ngFor="let m of messagesFiltered; trackBy: trackMessageById"
+            class="message-bubble"
+            [class.sent]="isFromMe(m)"
+            [class.received]="!isFromMe(m)"
+            [class.msg-ephemeral]="isEphemeral(m)"
+            [class.msg-scheduled]="isScheduled(m)"
+          >
+            <div class="msg-content">
+              <ng-container *ngIf="editingMessageId !== m.id">
+                <div *ngIf="m.parentId && getParentMessage(m)" class="msg-reply-preview">
+                  <span class="reply-label">↩ Reply to:</span>
+                  {{ (getParentMessage(m)!.content || '(attachment)') | slice:0:80 }}{{ ((getParentMessage(m)!.content || '').length) > 80 ? '...' : '' }}
+                </div>
+                <span *ngIf="m.content" class="msg-text">
+                  {{ getTranslatedContent(m) ?? m.content }}
+                  <button *ngIf="getTranslatedContent(m)" type="button" class="btn-show-original" (click)="clearTranslation(m)" title="Show original">↩</button>
+                </span>
+                <div *ngIf="m.attachmentUrl" class="msg-attachment-wrap">
+                  <img *ngIf="getAttachmentPreviewUrl(m)" [src]="getAttachmentPreviewUrl(m)" class="msg-attachment-preview" (click)="openAttachment(m.attachmentUrl)" alt="Preview" />
+                  <audio
+                    *ngIf="getAudioPreviewUrl(m)"
+                    [src]="getAudioPreviewUrl(m)"
+                    controls
+                    preload="metadata"
+                    playsinline
+                    (play)="onAudioPlay()"
+                    (pause)="onAudioStop()"
+                    (ended)="onAudioStop()"
+                    class="msg-audio-preview"
+                  ></audio>
+                  <div *ngIf="getAudioPreviewUrl(m)" class="audio-debug-row">
+                    <small class="audio-debug-mime">Audio format: {{ getAudioMimeLabel(m) }}</small>
+                    <button type="button" class="msg-attachment" (click)="downloadAttachment(m.attachmentUrl, m.attachmentFileName)">
+                      Download audio
+                    </button>
+                  </div>
+                  <button *ngIf="!getAttachmentPreviewUrl(m) && !getAudioPreviewUrl(m)" type="button" class="msg-attachment" (click)="openAttachment(m.attachmentUrl)">
+                    {{ m.attachmentFileName || 'Attachment' }}
+                  </button>
+                </div>
+              </ng-container>
+              <div *ngIf="editingMessageId === m.id" class="msg-edit">
+                <textarea
+                  [(ngModel)]="editingContent"
+                  class="edit-textarea"
+                  rows="2"
+                  placeholder="Edit message..."
+                  (keydown.enter)="$event.preventDefault(); saveEdit()"
+                  (keydown.escape)="cancelEdit()"
+                ></textarea>
+                <div class="edit-actions">
+                  <button type="button" class="btn-save-edit" (click)="saveEdit()" [disabled]="updating">
+                    {{ updating ? '...' : 'Save' }}
+                  </button>
+                  <button type="button" class="btn-cancel-edit" (click)="cancelEdit()" [disabled]="updating">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="msg-reactions-row">
+              <div class="msg-reactions" *ngIf="getReactionsGrouped(m).length">
+                <button
+                  *ngFor="let g of getReactionsGrouped(m)"
+                  type="button"
+                  class="reaction-chip"
+                  [class.reaction-chip-active]="hasUserReacted(m, g.emoji)"
+                  (click)="toggleReaction(m, g.emoji); $event.stopPropagation()"
+                  [title]="g.count === 1 ? 'Remove reaction' : g.count + ' reactions'"
+                >
+                  <span class="reaction-emoji">{{ g.emoji }}</span>
+                  <span class="reaction-count" *ngIf="g.count > 1">{{ g.count }}</span>
+                </button>
+              </div>
+              <div class="reaction-picker-wrap" *ngIf="reactionPickerMessageId === m.id" (click)="$event.stopPropagation()">
+                <div class="reaction-picker">
+                  <button
+                    *ngFor="let emoji of REACTION_EMOJIS"
+                    type="button"
+                    class="reaction-picker-btn"
+                    (click)="addReaction(m, emoji)"
+                    [title]="'Add ' + emoji"
+                  >{{ emoji }}</button>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn-reaction-msg"
+                (click)="toggleReactionPicker(m); $event.stopPropagation()"
+                title="Add reaction"
+              >😊</button>
+            </div>
+            <div class="msg-meta">
+              <span class="msg-date">{{ formatDate(m.sentAt) }}</span>
+              <span *ngIf="m.ephemeralSeconds || m.ephemeralMinutes" class="msg-ephemeral">⏱ {{ formatEphemeral(m) }}</span>
+              <span class="msg-status" [class.read]="m.status === 'READ'">{{ m.status === 'READ' ? 'Read' : 'Sent' }}</span>
+              <button type="button" class="btn-reply-msg" (click)="setReplyTo(m)" title="Reply">↩</button>
+              <button type="button" class="btn-translate-msg" (click)="translateMessage(m, 'en')" [disabled]="translatingMessageId === m.id || !m.content" title="Translate to English">🌐 EN</button>
+              <button type="button" class="btn-translate-msg" (click)="translateMessage(m, 'fr')" [disabled]="translatingMessageId === m.id || !m.content" title="Translate to French">🌐 FR</button>
+              <button
+                *ngIf="isFromMe(m) && editingMessageId !== m.id"
+                type="button"
+                class="btn-edit-msg"
+                (click)="startEdit(m)"
+                title="Edit"
+              >✎</button>
+              <button
+                *ngIf="isFromMe(m)"
+                type="button"
+                class="btn-delete-msg"
+                (click)="deleteMessage(m)"
+                title="Delete"
+              >×</button>
+            </div>
+            <div *ngIf="expandedThreadIds.has(m.id)" class="thread-replies">
+              <div *ngFor="let r of getThreadReplies(m)" class="thread-reply-bubble" [class.sent]="isFromMe(r)" [class.received]="!isFromMe(r)">
+                <span class="msg-text">{{ r.content }}</span>
+                <span class="msg-date">{{ formatDate(r.sentAt) }}</span>
+              </div>
+            </div>
+            <button type="button" class="btn-view-thread" (click)="toggleThread(m)" title="View thread">
+              {{ expandedThreadIds.has(m.id) ? 'Hide' : 'View' }} {{ expandedThreadIds.has(m.id) ? getThreadReplies(m).length : '' }} {{ expandedThreadIds.has(m.id) ? 'replies' : 'thread' }}
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="!isOnline" class="offline-banner">You are offline. Messages will be sent when you reconnect.</div>
+
+        <div class="compose-area">
+          <div *ngIf="blockedByThem" class="blocked-notice">
+            You can't send messages to this user. They have blocked you.
+          </div>
+          <div *ngIf="replyToMessage" class="reply-preview">
+            <span>Replying to: {{ replyToMessage.content | slice:0:50 }}{{ (replyToMessage.content || '').length > 50 ? '...' : '' }}</span>
+            <button type="button" (click)="setReplyTo(null)">×</button>
+          </div>
+          <div *ngIf="attachmentUrl" class="attachment-preview">
+            <span>{{ attachmentFileName }}</span>
+            <button type="button" (click)="removeAttachment()">×</button>
+          </div>
+          <div class="compose-options">
+            <label class="message-type-label">
+              <span>Message type:</span>
+              <select [(ngModel)]="messageType" class="message-type-select">
+                <option value="standard">Standard</option>
+                <option value="ephemeral">Ephemeral</option>
+                <option value="scheduled">Scheduled</option>
+              </select>
+            </label>
+            <div *ngIf="messageType === 'ephemeral'" class="options-panel ephemeral-panel">
+              <span class="panel-label">Duration:</span>
+              <label><input type="number" [(ngModel)]="ephemeralDays" min="0" placeholder="d" title="Days" /> days</label>
+              <label><input type="number" [(ngModel)]="ephemeralHours" min="0" max="23" placeholder="h" title="Hours" /> h</label>
+              <label><input type="number" [(ngModel)]="ephemeralMinutes" min="0" max="59" placeholder="m" title="Minutes" /> m</label>
+              <label><input type="number" [(ngModel)]="ephemeralSeconds" min="0" max="59" placeholder="s" title="Seconds" /> s</label>
+            </div>
+            <div *ngIf="messageType === 'scheduled'" class="options-panel scheduled-panel">
+              <label class="schedule-label">
+                <span>Send at:</span>
+                <input type="datetime-local" [(ngModel)]="scheduledAt" step="1" title="Date and time to send" />
+              </label>
+            </div>
+          </div>
+          <div class="compose-row">
+            <input
+              #fileInput
+              type="file"
+              class="file-input"
+              multiple
+              (change)="onFileSelected($event)"
+            />
+            <select
+              class="audio-input-select"
+              [(ngModel)]="selectedAudioInputId"
+              [disabled]="recording || blockedByThem"
+              title="Microphone input"
+            >
+              <option value="">Default mic</option>
+              <option *ngFor="let d of audioInputDevices" [value]="d.deviceId">
+                {{ d.label || ('Microphone ' + d.deviceId.slice(0, 6)) }}
+              </option>
+            </select>
+            <button type="button" class="btn-attach" (click)="fileInput.click()" [disabled]="uploading || blockedByThem" title="Attach file(s)">
+              {{ uploading ? '...' : '📎' }}
+            </button>
+            <button type="button" class="btn-voice" (click)="recording ? stopVoiceRecording() : startVoiceRecording()" [disabled]="blockedByThem" [class.recording]="recording" title="Voice message">
+              {{ recording ? '⏹' : '🎤' }}
+            </button>
+            <textarea
+              [(ngModel)]="newMessageContent"
+              placeholder="Your message... (@mention)"
+              rows="2"
+              [disabled]="blockedByThem"
+              (keydown.enter)="$event.preventDefault(); sendMessage()"
+              (input)="sendTyping()"
+            ></textarea>
+            <button type="button" class="btn-send" (click)="sendMessage()" [disabled]="sending || blockedByThem">
+              {{ sending ? '...' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

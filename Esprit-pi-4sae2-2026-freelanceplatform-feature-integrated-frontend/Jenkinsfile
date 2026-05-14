@@ -1,0 +1,132 @@
+// =====================================================================
+//  Frontend (Angular daxa) · CI/CD pipeline
+//  Stages : Checkout · Install · Lint · Test+Coverage · Sonar
+//           Build · Docker push · K8s deploy
+//  Triggered automatically by the Git → Jenkins webhook (githubPush).
+// =====================================================================
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+    timeout(time: 30, unit: 'MINUTES')
+  }
+
+  triggers {
+    githubPush()
+  }
+
+  tools {
+    nodejs 'Node-20'
+  }
+
+  environment {
+    APP_NAME        = 'frontend-daxa'
+    APP_DIR         = 'Esprit-pi-4sae2-2026-freelanceplatform-feature-integrated-frontend'
+    IMAGE_NAME      = "${env.DOCKERHUB_NAMESPACE ?: 'prolance'}/frontend-daxa"
+    IMAGE_TAG       = "${env.BUILD_NUMBER}"
+    SONAR_PROJECT   = 'prolance-frontend-daxa'
+    K8S_NAMESPACE   = 'prolance'
+    KUBECONFIG_CRED = 'kubeconfig-prolance'
+    DOCKERHUB_CRED  = 'dockerhub-creds'
+    SONAR_TOKEN     = credentials('sonarqube-token')
+    CHROME_BIN      = '/usr/bin/google-chrome'
+    CI              = 'true'
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+        sh 'echo "Building $APP_NAME @ $(git rev-parse --short HEAD)"'
+        sh 'node -v && npm -v'
+      }
+    }
+
+    stage('Install') {
+      steps { dir("${APP_DIR}") { sh 'npm ci --no-audit --no-fund' } }
+    }
+
+    stage('Lint') {
+      steps { dir("${APP_DIR}") { sh 'npm run lint' } }
+    }
+
+    stage('Test + Coverage') {
+      steps {
+        dir("${APP_DIR}") {
+          sh 'npx ng test --configuration=ci --watch=false --browsers=ChromeHeadlessCI --code-coverage'
+        }
+      }
+      post {
+        always {
+          junit allowEmptyResults: true, testResults: "${APP_DIR}/TESTS-*.xml,${APP_DIR}/test-results/**/*.xml"
+          archiveArtifacts artifacts: "${APP_DIR}/coverage/daxa/**", allowEmptyArchive: true
+        }
+      }
+    }
+
+    stage('SonarQube Analysis') {
+      steps {
+        dir("${APP_DIR}") {
+          withSonarQubeEnv('SonarQube') {
+            sh '''
+              npx --yes sonarqube-scanner \
+                -Dsonar.projectKey=$SONAR_PROJECT \
+                -Dsonar.host.url=$SONAR_HOST_URL \
+                -Dsonar.login=$SONAR_TOKEN
+            '''
+          }
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: false
+        }
+      }
+    }
+
+    stage('Build (production)') {
+      steps { dir("${APP_DIR}") { sh 'npm run build:prod' } }
+    }
+
+    stage('Docker · build & push') {
+      steps {
+        dir("${APP_DIR}") {
+          script {
+            docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CRED}") {
+              def img = docker.build("${IMAGE_NAME}:${IMAGE_TAG}", '.')
+              img.push()
+              img.push('latest')
+            }
+          }
+        }
+      }
+    }
+
+    stage('Deploy → KubeAdm cluster') {
+      when { anyOf { branch 'main'; branch 'sadok-devops' } }
+      steps {
+        withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG')]) {
+          sh '''
+            kubectl -n ${K8S_NAMESPACE} apply -f ${APP_DIR}/k8s/
+            kubectl -n ${K8S_NAMESPACE} set image deployment/frontend-daxa \
+              frontend-daxa=${IMAGE_NAME}:${IMAGE_TAG} --record
+            kubectl -n ${K8S_NAMESPACE} rollout status deployment/frontend-daxa --timeout=180s
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo "✔ ${APP_NAME} pipeline OK · image ${IMAGE_NAME}:${IMAGE_TAG}" }
+    failure { echo "✖ ${APP_NAME} pipeline FAILED" }
+    always  { cleanWs() }
+  }
+}
